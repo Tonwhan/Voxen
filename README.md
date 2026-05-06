@@ -1,4 +1,4 @@
-# Oryxen Forge
+# Voxen
 
 > AI-powered CAD generator that produces assembly-aware 3D models as discrete, labeled parts — not a single mesh blob. Prompt-to-part pipeline powered by AMD MI300X. Outputs validated JSON (Zod), rendered live in Three.js, exported as STEP / STL / OBJ.
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Most AI-to-3D tools output a single undifferentiated mesh. Oryxen Forge is different: it generates **assembly-aware models** where every part is named, dimensioned, material-annotated, and independently exportable. The result is a model you can actually use in downstream CAD workflows — not just a blob to look at.
+Most AI-to-3D tools output a single undifferentiated mesh. Voxen is different: it generates **assembly-aware models** where every part is named, dimensioned, material-annotated, and independently exportable. The result is a model you can actually use in downstream CAD workflows — not just a blob to look at.
 
 The system accepts a natural language description, runs it through an LLM agent on AMD MI300X, validates the output with Zod, and renders each part as a distinct Three.js object with full interactive inspection.
 
