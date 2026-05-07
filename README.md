@@ -219,17 +219,6 @@ Exports are per-part or full-assembly, stored in Supabase Storage.
 
 ---
 
-## Roadmap
-
-- [ ] Multi-turn prompt refinement (iterative assembly editing)
-- [ ] Constraint-based assembly (snap joints, axis alignment)
-- [ ] Parametric dimension editing in-browser
-- [ ] BOM (bill of materials) export
-- [ ] Fine-tuned Qwen3 on CAD-specific dataset
-- [ ] Collaborative workspaces
-
----
-
 ## Team
 
 **Oryxenlab** — AMD AI Developers Hackathon 2026
