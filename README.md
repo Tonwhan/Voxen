@@ -44,6 +44,11 @@ The system accepts a natural language description, runs it through an LLM agent 
 
 ---
 
+## Tech Stack Diagram
+![Architecture Diagram](./public/docs/voxen-diagram.png)
+
+---
+
 ## Architecture
 
 ```
@@ -64,7 +69,6 @@ Export STEP / STL / OBJ  →  Supabase Storage
 
 **Data flow:** User prompt → Flask receives request → Qwen3-8B generates structured part JSON → Zod validates schema → response sent to frontend → R3F renders each part as a discrete mesh → user inspects/exports individual parts.
 
----
 
 ## Project Structure
 
