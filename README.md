@@ -1,6 +1,6 @@
 # Voxen
 
-> AI-powered CAD generator that produces assembly-aware 3D models as discrete, labeled parts — not a single mesh blob. Prompt-to-part pipeline powered by AMD MI300X. Outputs validated JSON (Zod), rendered live in React Three Fiber, exported as STEP / STL / OBJ.
+> AI-powered CAD generator that produces assembly-aware 3D models as discrete, labeled parts — not a single mesh blob. Powered by AMD MI300X with Qwen3-8B.
 
 **🏆 AMD AI Developers Hackathon 2026 · Oryxenlab**
 
@@ -14,38 +14,39 @@ The system accepts a natural language description, runs it through an LLM agent 
 
 ---
 
-## Demo
+## Features
 
-- Toggle individual parts on/off in the 3D viewer
-- Click any part to inspect dimensions, material recommendation, and AI design intent
-- Unfocused parts render as wireframes
-- Free-camera orbit via scroll/drag; quick-view presets: Front / Top / Side / Iso
-- Export selected part or full assembly as **STL**, **OBJ**, or **STEP**
+- 🎯 **Part-aware Generation** — LLM generates each component as a separate object with name, dimensions, and material
+- 🖱️ **Interactive 3D Inspection** — Click any part to isolate it; others fade to wireframe
+- 📤 **CAD-ready Export** — Export as STL, OBJ, or STEP for use in Fusion 360, Blender, SolidWorks
+- 🎮 **Free Camera Controls** — Orbit, zoom, and quick-view presets (Front/Top/Side/Iso)
+- ✅ **Zod Validation** — All AI outputs validated before rendering
+- ⚡ **AMD MI300X Powered** — Fast inference on cutting-edge GPU hardware
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 |
-| Language | TypeScript |
-| UI Library | Shadcn UI |
-| Styling | Tailwind CSS |
-| 3D Rendering | React Three Fiber (R3F) |
-| 3D Helpers | @react-three/drei |
-| Validation | Zod |
-| AI Backend | Flask (Python) |
-| LLM Inference | Qwen3-8B on AMD MI300X |
-| Auth | Clerk |
-| File Storage | Supabase Storage |
-| Hosting | Vercel (Edge CDN) |
-| VCS | GitHub |
+| Layer | Technology | Purpose |
+|---|---|---|
+| Framework | Next.js 16 (App Router) | Server & client rendering |
+| Language | TypeScript | Type-safe development |
+| UI Library | Shadcn UI | Component library |
+| Styling | Tailwind CSS | Utility-first styling |
+| 3D Rendering | React Three Fiber (R3F) | React renderer for Three.js |
+| 3D Helpers | @react-three/drei | OrbitControls, Edges, Gizmo |
+| Validation | Zod | JSON schema validation |
+| AI Backend | Flask (Python) | API server |
+| LLM | Qwen3-8B-Instruct | Structured CAD generation |
+| GPU | AMD MI300X | LLM inference via vLLM |
+| Auth | Clerk | Authentication & user management |
+| Hosting | Vercel | Frontend deployment |
+| VCS | GitHub | Source control |
 
 ---
 
-## Tech Stack Diagram
-![Architecture Diagram](./public/docs/voxen-diagram.png)
+## Stack Diagram
+![Stack Diagram](/public/docs/voxen-diagram.png)
 
 ---
 
@@ -64,11 +65,12 @@ Zod-validated JSON (parts + metadata)
     ↓
 React Three Fiber renders parts + Dashboard
     ↓
-Export STEP / STL / OBJ  →  Supabase Storage
+Export STEP / STL / OBJ
 ```
 
 **Data flow:** User prompt → Flask receives request → Qwen3-8B generates structured part JSON → Zod validates schema → response sent to frontend → R3F renders each part as a discrete mesh → user inspects/exports individual parts.
 
+---
 
 ## Project Structure
 
@@ -81,6 +83,8 @@ voxen/
 │   ├── workspace/              # Main 3D CAD viewer page
 │   └── layout.tsx
 ├── components/
+│   ├── home/                   # Homepage sections
+│   ├── workspace/              # Generator page
 │   ├── viewer/                 # R3F canvas + controls
 │   │   ├── SceneRenderer.tsx   # R3F Canvas + lighting
 │   │   ├── PartMesh.tsx        # Per-part mesh + wireframe toggle
@@ -90,7 +94,11 @@ voxen/
 ├── lib/
 │   ├── schemas/                # Zod schemas for part JSON
 │   │   └── assembly.ts
+│   ├── api/                    # API wrappers
+│   │   └── generate.ts
 │   └── export/                 # STL / OBJ / STEP exporters
+├── types/
+│   └── assembly.ts             # TypeScript types from Zod
 ├── backend/                    # Flask AI agent
 │   ├── app.py
 │   ├── agent/
@@ -98,7 +106,7 @@ voxen/
 │   │   └── prompt_builder.py
 │   └── validators/
 │       └── assembly_schema.py  # Pydantic mirror of Zod schema
-└── README.md
+└── __tests__/                  # Vitest + React Testing Library
 ```
 
 ---
@@ -109,20 +117,20 @@ voxen/
 
 - Node.js 20+
 - Python 3.11+
-- Clerk application
-- AMD MI300X endpoint (or compatible OpenAI-format API)
+- Clerk account
+- AMD MI300X endpoint (or OpenAI-compatible vLLM server)
 
 ### Installation
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/oryxenlab/voxen.git
 cd voxen
 
 # Install frontend dependencies
 npm install
 
-# Install Python backend dependencies
+# Install backend dependencies
 cd backend
 pip install -r requirements.txt
 cd ..
@@ -130,39 +138,47 @@ cd ..
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root:
+Create `.env.local` in project root:
 
 ```env
 # Clerk Auth
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
 CLERK_SECRET_KEY=sk_...
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-
-# Flask AI Backend
+# Flask Backend
 FLASK_API_URL=http://localhost:5000
 
 # AMD MI300X / Qwen3
-LLM_API_BASE_URL=https://...
-LLM_API_KEY=...
+LLM_API_BASE_URL=https://your-mi300x-endpoint
+LLM_API_KEY=your_api_key
 LLM_MODEL=Qwen/Qwen3-8B-Instruct
 ```
+
+See `.env.example` for detailed comments on each variable.
 
 ### Development
 
 ```bash
-# Start Next.js frontend
+# Terminal 1 — Frontend
 npm run dev
 
-# Start Flask backend (separate terminal)
+# Terminal 2 — Backend
 cd backend
 python app.py
 ```
 
-Frontend runs at `http://localhost:3000`, Flask backend at `http://localhost:5000`.
+Frontend: `http://localhost:3000`  
+Backend: `http://localhost:5000`
+
+### Testing
+
+```bash
+# Run all tests
+npm run test
+
+# Backend tests
+cd backend && pytest
+```
 
 ---
 
@@ -209,19 +225,17 @@ export const AssemblySchema = z.object({
 
 ## Export Formats
 
-| Format | Use case |
+| Format | Use Case |
 |---|---|
 | **STL** | 3D printing, rapid prototyping |
-| **OBJ** | Blender, Cinema 4D, general mesh editing |
-| **STEP** | Professional CAD (Fusion 360, CATIA, SolidWorks) |
-
-Exports are per-part or full-assembly, stored in Supabase Storage.
+| **OBJ** | Blender, Cinema 4D, mesh editing |
+| **STEP** | Fusion 360, CATIA, SolidWorks |
 
 ---
 
 ## Roadmap
 
-- [ ] Multi-turn prompt refinement (iterative assembly editing)
+- [ ] Multi-turn prompt refinement (iterative editing)
 - [ ] Constraint-based assembly (snap joints, axis alignment)
 - [ ] Parametric dimension editing in-browser
 - [ ] BOM (bill of materials) export
@@ -233,3 +247,9 @@ Exports are per-part or full-assembly, stored in Supabase Storage.
 ## Team
 
 **Oryxenlab** — AMD AI Developers Hackathon 2026
+
+---
+
+## License
+
+MIT
