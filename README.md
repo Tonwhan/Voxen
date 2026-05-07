@@ -1,8 +1,8 @@
 # Voxen
 
-> AI-powered CAD generator that produces assembly-aware 3D models as discrete, labeled parts — not a single mesh blob. Prompt-to-part pipeline powered by AMD MI300X. Outputs validated JSON (Zod), rendered live in Three.js, exported as STEP / STL / OBJ.
+> AI-powered CAD generator that produces assembly-aware 3D models as discrete, labeled parts — not a single mesh blob. Prompt-to-part pipeline powered by AMD MI300X. Outputs validated JSON (Zod), rendered live in React Three Fiber, exported as STEP / STL / OBJ.
 
-**AMD AI Developers Hackathon 2026 · Oryxenlab**
+**🏆 AMD AI Developers Hackathon 2026 · Oryxenlab**
 
 ---
 
@@ -10,7 +10,7 @@
 
 Most AI-to-3D tools output a single undifferentiated mesh. Voxen is different: it generates **assembly-aware models** where every part is named, dimensioned, material-annotated, and independently exportable. The result is a model you can actually use in downstream CAD workflows — not just a blob to look at.
 
-The system accepts a natural language description, runs it through an LLM agent on AMD MI300X, validates the output with Zod, and renders each part as a distinct Three.js object with full interactive inspection.
+The system accepts a natural language description, runs it through an LLM agent on AMD MI300X, validates the output with Zod, and renders each part as a distinct 3D object with full interactive inspection.
 
 ---
 
@@ -18,7 +18,7 @@ The system accepts a natural language description, runs it through an LLM agent 
 
 - Toggle individual parts on/off in the 3D viewer
 - Click any part to inspect dimensions, material recommendation, and AI design intent
-- Unfocused parts render as dashed wireframes
+- Unfocused parts render as wireframes
 - Free-camera orbit via scroll/drag; quick-view presets: Front / Top / Side / Iso
 - Export selected part or full assembly as **STL**, **OBJ**, or **STEP**
 
@@ -32,14 +32,13 @@ The system accepts a natural language description, runs it through an LLM agent 
 | Language | TypeScript |
 | UI Library | Shadcn UI |
 | Styling | Tailwind CSS |
-| 3D Renderer | Three.js |
+| 3D Rendering | React Three Fiber (R3F) |
+| 3D Helpers | @react-three/drei |
 | Validation | Zod |
 | AI Backend | Flask (Python) |
-| LLM Inference | AMD MI300X (cloud GPU) |
-| Database | Supabase (PostgreSQL) |
+| LLM Inference | Qwen3-8B on AMD MI300X |
 | Auth | Clerk |
-| File Storage | Cloudflare R2 |
-| Email | Resend |
+| File Storage | Supabase Storage |
 | Hosting | Vercel (Edge CDN) |
 | VCS | GitHub |
 
@@ -51,26 +50,26 @@ The system accepts a natural language description, runs it through an LLM agent 
 Client (Browser)
     ↓
 Next.js 16 Frontend  ←→  Clerk (Auth)
-    ↓                         ↓
-Flask API (Python)       Supabase (PostgreSQL)
     ↓
-LLM Agent on AMD MI300X
+Flask API (Python)
+    ↓
+Qwen3-8B on AMD MI300X
     ↓ generates
 Zod-validated JSON (parts + metadata)
     ↓
-Three.js renders parts + Dashboard
+React Three Fiber renders parts + Dashboard
     ↓
-Export STEP / STL / OBJ  →  Cloudflare R2
+Export STEP / STL / OBJ  →  Supabase Storage
 ```
 
-**Data flow:** User prompt → Flask receives request → LLM generates structured part JSON → Zod validates schema → response sent to frontend → Three.js renders each part as a discrete mesh → user inspects/exports individual parts.
+**Data flow:** User prompt → Flask receives request → Qwen3-8B generates structured part JSON → Zod validates schema → response sent to frontend → R3F renders each part as a discrete mesh → user inspects/exports individual parts.
 
 ---
 
 ## Project Structure
 
 ```
-oryxen-forge/
+voxen/
 ├── app/                        # Next.js 16 app router
 │   ├── (auth)/                 # Clerk-protected routes
 │   ├── api/                    # Next.js API route handlers
@@ -78,10 +77,11 @@ oryxen-forge/
 │   ├── workspace/              # Main 3D CAD viewer page
 │   └── layout.tsx
 ├── components/
-│   ├── viewer/                 # Three.js canvas + controls
-│   │   ├── SceneRenderer.tsx
-│   │   ├── PartSelector.tsx
-│   │   └── QuickActions.tsx
+│   ├── viewer/                 # R3F canvas + controls
+│   │   ├── SceneRenderer.tsx   # R3F Canvas + lighting
+│   │   ├── PartMesh.tsx        # Per-part mesh + wireframe toggle
+│   │   ├── PartSelector.tsx    # Click-to-select raycasting
+│   │   └── QuickActions.tsx    # Gizmo view presets
 │   └── ui/                     # Shadcn UI components
 ├── lib/
 │   ├── schemas/                # Zod schemas for part JSON
@@ -90,10 +90,10 @@ oryxen-forge/
 ├── backend/                    # Flask AI agent
 │   ├── app.py
 │   ├── agent/
-│   │   ├── llm_client.py       # AMD MI300X inference
+│   │   ├── llm_client.py       # Qwen3-8B on AMD MI300X via vLLM
 │   │   └── prompt_builder.py
 │   └── validators/
-│       └── assembly_schema.py
+│       └── assembly_schema.py  # Pydantic mirror of Zod schema
 └── README.md
 ```
 
@@ -105,7 +105,6 @@ oryxen-forge/
 
 - Node.js 20+
 - Python 3.11+
-- Supabase project
 - Clerk application
 - AMD MI300X endpoint (or compatible OpenAI-format API)
 
@@ -113,8 +112,8 @@ oryxen-forge/
 
 ```bash
 # Clone the repository
-git clone https://github.com/oryxenlab/oryxen-forge.git
-cd oryxen-forge
+git clone https://github.com/oryxenlab/voxen.git
+cd voxen
 
 # Install frontend dependencies
 npm install
@@ -142,19 +141,10 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 # Flask AI Backend
 FLASK_API_URL=http://localhost:5000
 
-# Cloudflare R2
-R2_ACCOUNT_ID=...
-R2_ACCESS_KEY_ID=...
-R2_SECRET_ACCESS_KEY=...
-R2_BUCKET_NAME=oryxen-forge-exports
-
-# AMD MI300X / LLM
+# AMD MI300X / Qwen3
 LLM_API_BASE_URL=https://...
 LLM_API_KEY=...
-LLM_MODEL=...
-
-# Resend (optional)
-RESEND_API_KEY=re_...
+LLM_MODEL=Qwen/Qwen3-8B-Instruct
 ```
 
 ### Development
@@ -221,7 +211,7 @@ export const AssemblySchema = z.object({
 | **OBJ** | Blender, Cinema 4D, general mesh editing |
 | **STEP** | Professional CAD (Fusion 360, CATIA, SolidWorks) |
 
-Exports are per-part or full-assembly, stored in Cloudflare R2, and linked to the user's account in Supabase.
+Exports are per-part or full-assembly, stored in Supabase Storage.
 
 ---
 
@@ -231,6 +221,7 @@ Exports are per-part or full-assembly, stored in Cloudflare R2, and linked to th
 - [ ] Constraint-based assembly (snap joints, axis alignment)
 - [ ] Parametric dimension editing in-browser
 - [ ] BOM (bill of materials) export
+- [ ] Fine-tuned Qwen3 on CAD-specific dataset
 - [ ] Collaborative workspaces
 
 ---
