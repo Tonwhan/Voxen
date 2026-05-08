@@ -2,7 +2,10 @@
 
 > AI-powered CAD generator that produces assembly-aware 3D models as discrete, labeled parts — not a single mesh blob. Powered by AMD MI300X with Qwen3-8B.
 
-**🏆 AMD AI Developers Hackathon 2026 · Oryxenlab**
+**AMD AI Developers Hackathon 2026 · Oryxenlab**
+
+---
+![Voxen Banner](/public/docs/voxen-banner.png)
 
 ---
 
