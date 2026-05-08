@@ -1,8 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PromptInput } from '@/components/workspace/PromptInput';
 
 describe('PromptInput', () => {
+  afterEach(() => {
+    cleanup();
+  });
   it('renders correctly with label and placeholder', () => {
     render(<PromptInput value="" onChange={() => {}} />);
     expect(screen.getByLabelText('Describe your 3D Assembly')).toBeDefined();

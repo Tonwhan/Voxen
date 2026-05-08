@@ -3,6 +3,7 @@ import { Mesh } from "three";
 import { Part } from "@/types/assembly";
 import { Edges } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
+import { DimensionLabels } from "./DimensionLabels";
 
 type PartMeshProps = {
   part: Part;
@@ -16,51 +17,92 @@ type PartMeshProps = {
  * Renders a single discrete part in the 3D viewer.
  * Supports different shapes (box, sphere, cylinder, cone, plane) and an optional wireframe toggle.
  */
-export function PartMesh({ part, showWireframe = false, onClick, isSelected = false, hasSelection = false }: PartMeshProps) {
+export function PartMesh({
+  part,
+  showWireframe = false,
+  onClick,
+  isSelected = false,
+  hasSelection = false,
+}: PartMeshProps) {
   const meshRef = useRef<Mesh>(null);
 
   const isFaded = hasSelection && !isSelected;
-  const effectiveWireframe = showWireframe || isFaded;
 
   const getGeometry = () => {
+    const { dimensions } = part.geometry;
+    const args: [number, number, number] = [
+      dimensions.width || 1,
+      dimensions.height || 1,
+      dimensions.depth || 1,
+    ];
+
     switch (part.shape) {
       case "box":
-        return <boxGeometry args={[1, 1, 1]} />;
+        return <boxGeometry args={args} />;
       case "sphere":
-        return <sphereGeometry args={[0.5, 32, 32]} />;
+        return <sphereGeometry args={[args[0] / 2, 32, 32]} />;
       case "cylinder":
-        return <cylinderGeometry args={[0.5, 0.5, 1, 32]} />;
+        return (
+          <cylinderGeometry args={[args[0] / 2, args[2] / 2, args[1], 32]} />
+        );
       case "cone":
-        return <coneGeometry args={[0.5, 1, 32]} />;
+        return <coneGeometry args={[args[0] / 2, args[1], 32]} />;
       case "plane":
-        return <planeGeometry args={[1, 1]} />;
+        return <planeGeometry args={[args[0], args[2]]} />;
       default:
-        return <boxGeometry args={[1, 1, 1]} />;
+        return <boxGeometry args={args} />;
     }
   };
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    onClick?.();
+    // We don't stop propagation here to let the parent SelectToFocus handle it
+    // But we still call onClick for business logic (selecting the part in state)
+    if (e.button === 0) {
+      // Only on left click
+      onClick?.();
+    }
   };
 
   return (
-    <mesh
-      ref={meshRef}
-      position={part.position}
-      rotation={part.rotation}
-      scale={part.scale}
-      name={part.name}
-      onPointerDown={handlePointerDown}
-    >
-      {getGeometry()}
-      <meshStandardMaterial
-        color={part.color}
-        transparent
-        opacity={effectiveWireframe ? 0.3 : 1}
-        wireframe={effectiveWireframe}
-      />
-      {isSelected && <Edges scale={1.05} threshold={15} color="#FF6B00" />}
-    </mesh>
+    <group position={part.position} rotation={part.rotation} name={part.name}>
+      <mesh
+        ref={meshRef}
+        scale={part.scale}
+        onPointerDown={handlePointerDown}
+        castShadow
+        receiveShadow
+      >
+        {getGeometry()}
+
+        {/* Show solid mesh when selected OR when nothing is focused (hasSelection is false) OR showWireframe is false but not faded */}
+        {(isSelected || !hasSelection) && !showWireframe && (
+          <meshStandardMaterial
+            color={part.color}
+            metalness={0.2}
+            roughness={0.8}
+          />
+        )}
+
+        {/* Show wireframe when focused but NOT selected, OR when showWireframe is true */}
+        {(showWireframe || (hasSelection && !isSelected)) && (
+          <>
+            <meshBasicMaterial color={part.color} transparent opacity={0.1} />
+            <Edges color={isSelected ? "#FF6B00" : "#555555"} threshold={15} />
+          </>
+        )}
+      </mesh>
+
+      {/* Animation วัด Scale เมื่อ Focus (isSelected) */}
+      {isSelected && (
+        <DimensionLabels
+          dimensions={[
+            part.geometry.dimensions.width || 1,
+            part.geometry.dimensions.height || 1,
+            part.geometry.dimensions.depth || 1,
+          ]}
+          meshScale={part.scale}
+        />
+      )}
+    </group>
   );
 }

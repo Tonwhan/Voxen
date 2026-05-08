@@ -120,3 +120,20 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thumb-soft::-webkit-scrollbar-thumb {
+    background: #444444;
+    border-radius: 10px;
+  }
+  .scrollbar-thumb-soft:hover::-webkit-scrollbar-thumb {
+    background: #555555;
+  }
+}

@@ -34,7 +34,7 @@ The system accepts a natural language description, runs it through an LLM agent 
 | UI Library | Shadcn UI | Component library |
 | Styling | Tailwind CSS | Utility-first styling |
 | 3D Rendering | React Three Fiber (R3F) | React renderer for Three.js |
-| 3D Helpers | @react-three/drei | OrbitControls, Edges, Gizmo |
+| 3D Helpers | @react-three/drei | Edges |
 | Validation | Zod | JSON schema validation |
 | AI Backend | Flask (Python) | API server |
 | LLM | Qwen3-8B-Instruct | Structured CAD generation |

@@ -1,3 +1,5 @@
+import { Toaster } from "@/components/ui/sonner";
+
 interface Layout {
   children: React.ReactNode;
 }
@@ -7,6 +9,7 @@ export default function WorkspaceLayout({ children }: Layout) {
       <main className="flex flex-1 w-full h-full">
         {children}
       </main>
+      <Toaster />
     </div>
   );
 }

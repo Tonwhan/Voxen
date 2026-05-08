@@ -14,9 +14,20 @@ export function GenerateButton({ onClick, isLoading, disabled = false }: Generat
     <Button 
       onClick={onClick} 
       disabled={disabled || isLoading}
-      className="w-full bg-accent hover:bg-accent-hover text-white font-medium"
+      className={`w-full font-medium duration-600 transition-all ${
+        isLoading 
+          ? "bg-accent/50 cursor-not-allowed" 
+          : "bg-accent hover:bg-accent-hover text-white"
+      }`}
     >
-      {isLoading ? "Generating..." : "Generate CAD"}
+      {isLoading ? (
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span>AI Processing...</span>
+        </div>
+      ) : (
+        "Generate CAD"
+      )}
     </Button>
   );
 }

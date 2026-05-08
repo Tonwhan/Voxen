@@ -7,7 +7,7 @@ type PromptInputProps = {
 };
 
 /**
- * Textarea component for user to input CAD assembly prompts.
+ * Textarea component for "user" to input CAD assembly prompts.
  */
 export function PromptInput({ value, onChange, disabled = false }: PromptInputProps) {
   return (
@@ -21,7 +21,7 @@ export function PromptInput({ value, onChange, disabled = false }: PromptInputPr
         onChange={onChange}
         disabled={disabled}
         placeholder="e.g. A four-wheeled rover with a cylinder body..."
-        className="min-h-[120px] w-full resize-none rounded-md bg-surface border border-border px-3 py-2 text-sm text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+        className="transition-all duration-300 focus:ring-2 min-h-30 w-full resize-none rounded-md bg-surface border border-border pl-3 pr-4 py-2 text-sm text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 scrollbar-thin scrollbar-thumb-soft scrollbar-track-transparent"
       />
     </div>
   );
