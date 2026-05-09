@@ -1,7 +1,14 @@
 import { AssemblySchema } from '@/lib/schemas/assembly';
 import { Assembly } from '@/types/assembly';
 
-export type GenerateErrorCode = 'VALIDATION_ERROR' | 'LLM_ERROR' | 'TIMEOUT' | 'NETWORK_ERROR';
+export type GenerateErrorCode = 
+  | 'VALIDATION_ERROR' 
+  | 'LLM_ERROR' 
+  | 'TIMEOUT' 
+  | 'NETWORK_ERROR'
+  | 'INTENT_NOT_FOUND'
+  | 'LLM_GENERATION_FAILED'
+  | 'SCHEMA_VALIDATION_FAILED';
 
 export type GenerateResponse = 
   | { success: true; data: Assembly }
@@ -23,10 +30,15 @@ export async function generateAssembly(prompt: string): Promise<GenerateResponse
   // RETURNS: AssemblySchema { assemblyName, parts[], metadata }
   // ERRORS: VALIDATION_ERROR (invalid JSON), LLM_ERROR (model failed), TIMEOUT (>60s)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for slow CPU inference
 
   try {
-    const response = await fetch('/api/generate', { // Assumes Next.js rewrites or a proxy to Flask
+    // Direct connection to Flask backend to bypass Next.js dev proxy timeouts
+    const apiUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:5000/generate' 
+      : '/api/generate';
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),

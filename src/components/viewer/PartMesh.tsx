@@ -28,29 +28,28 @@ export function PartMesh({
 
   const isFaded = hasSelection && !isSelected;
 
-  const getGeometry = () => {
-    const { dimensions } = part.geometry;
-    const args: [number, number, number] = [
-      dimensions.width || 1,
-      dimensions.height || 1,
-      dimensions.depth || 1,
-    ];
+  const { dimensions } = part.geometry;
+  const w = dimensions.width ?? (dimensions.radius ? dimensions.radius * 2 : 1);
+  const h = dimensions.height ?? 1;
+  const d = dimensions.depth ?? (dimensions.radius ? dimensions.radius * 2 : w);
+  const r = dimensions.radius ?? w / 2;
 
+  const getGeometry = () => {
     switch (part.shape) {
       case "box":
-        return <boxGeometry args={args} />;
+        return <boxGeometry args={[w, h, d]} />;
       case "sphere":
-        return <sphereGeometry args={[args[0] / 2, 32, 32]} />;
+        return <sphereGeometry args={[r, 32, 32]} />;
       case "cylinder":
         return (
-          <cylinderGeometry args={[args[0] / 2, args[2] / 2, args[1], 32]} />
+          <cylinderGeometry args={[r, r, h, 32]} />
         );
       case "cone":
-        return <coneGeometry args={[args[0] / 2, args[1], 32]} />;
+        return <coneGeometry args={[r, h, 32]} />;
       case "plane":
-        return <planeGeometry args={[args[0], args[2]]} />;
+        return <planeGeometry args={[w, d]} />;
       default:
-        return <boxGeometry args={args} />;
+        return <boxGeometry args={[w, h, d]} />;
     }
   };
 
@@ -95,11 +94,7 @@ export function PartMesh({
       {/* Animation วัด Scale เมื่อ Focus (isSelected) */}
       {isSelected && (
         <DimensionLabels
-          dimensions={[
-            part.geometry.dimensions.width || 1,
-            part.geometry.dimensions.height || 1,
-            part.geometry.dimensions.depth || 1,
-          ]}
+          dimensions={[w, h, d]}
           meshScale={part.scale}
         />
       )}

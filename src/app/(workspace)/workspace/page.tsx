@@ -152,7 +152,20 @@ export default function WorkspacePage() {
         // Keep panel visible for a moment then hide
         setTimeout(() => setShowProcessPanel(false), 2000);
       } else {
-        setError({ message: result.error, code: result.code });
+        // Map backend codes to user-friendly messages
+        const errorMessages: Record<string, string> = {
+          'INTENT_NOT_FOUND': "I couldn't find a CAD-related intent in your prompt. Try describing a physical object.",
+          'LLM_GENERATION_FAILED': "The AI failed to generate a valid design plan. Please try rephrasing your prompt.",
+          'SCHEMA_VALIDATION_FAILED': "The generated design was invalid. I've attempted to auto-fix it, but it still failed.",
+          'TIMEOUT': "The request took too long. The model might be busy or the prompt too complex.",
+          'NETWORK_ERROR': "A network error occurred. Please check if the backend server is running.",
+          'VALIDATION_ERROR': "The prompt or response failed validation."
+        };
+
+        setError({
+          message: errorMessages[result.code] || result.error || "An unexpected error occurred.",
+          code: result.code
+        });
         setShowProcessPanel(false);
       }
     } catch (err) {
