@@ -40,8 +40,10 @@ The system accepts a natural language description, runs it through an LLM agent 
 | 3D Helpers | @react-three/drei | Edges |
 | Validation | Zod | JSON schema validation |
 | AI Backend | Flask (Python) | API server |
-| LLM | Qwen3-8B-Instruct | Structured CAD generation |
-| GPU | AMD MI300X | LLM inference via vLLM |
+| ML Framework | PyTorch | LLM Fine-tuning & model optimization |
+| Base Model | Qwen 3 8B | Foundation model for structured CAD generation |
+| LLM Server | vLLM | High-throughput model serving |
+| Hardware | AMD MI300X | GPU acceleration for training and inference |
 | Auth | Clerk | Authentication & user management |
 | Hosting | Vercel | Frontend deployment |
 | VCS | GitHub | Source control |
@@ -79,29 +81,22 @@ Export STEP / STL / OBJ
 
 ```
 voxen/
-├── app/                        # Next.js 16 app router
-│   ├── (auth)/                 # Clerk-protected routes
-│   ├── api/                    # Next.js API route handlers
-│   │   └── generate/           # Proxy to Flask AI backend
-│   ├── workspace/              # Main 3D CAD viewer page
-│   └── layout.tsx
-├── components/
-│   ├── home/                   # Homepage sections
-│   ├── workspace/              # Generator page
-│   ├── viewer/                 # R3F canvas + controls
-│   │   ├── SceneRenderer.tsx   # R3F Canvas + lighting
-│   │   ├── PartMesh.tsx        # Per-part mesh + wireframe toggle
-│   │   ├── PartSelector.tsx    # Click-to-select raycasting
-│   │   └── QuickActions.tsx    # Gizmo view presets
-│   └── ui/                     # Shadcn UI components
-├── lib/
-│   ├── schemas/                # Zod schemas for part JSON
-│   │   └── assembly.ts
-│   ├── api/                    # API wrappers
-│   │   └── generate.ts
-│   └── export/                 # STL / OBJ / STEP exporters
-├── types/
-│   └── assembly.ts             # TypeScript types from Zod
+├── src/
+│   ├── app/                    # Next.js 16 app router
+│   │   ├── (auth)/             # Clerk-protected routes (sign-in, sign-up)
+│   │   ├── (public)/           # Public landing page
+│   │   ├── (workspace)/        # Main 3D CAD viewer and workspace
+│   │   └── layout.tsx
+│   ├── components/
+│   │   ├── home/               # Landing page sections (Hero, Mockup, Features)
+│   │   ├── workspace/          # Generator page
+│   │   ├── viewer/             # R3F canvas + controls (SceneCanvas, GearCanvas)
+│   │   └── ui/                 # Shadcn UI components & animations
+│   ├── lib/
+│   │   ├── schemas/            # Zod schemas for part JSON
+│   │   ├── api/                # API wrappers
+│   │   └── export/             # STL / OBJ / STEP exporters
+│   └── types/                  # TypeScript types from Zod
 ├── backend/                    # Flask AI agent
 │   ├── app.py
 │   ├── agent/
@@ -130,8 +125,8 @@ voxen/
 git clone https://github.com/oryxenlab/voxen.git
 cd voxen
 
-# Install frontend dependencies
-npm install
+# Install frontend dependencies (using pnpm)
+pnpm install
 
 # Install backend dependencies
 cd backend
@@ -163,7 +158,7 @@ See `.env.example` for detailed comments on each variable.
 
 ```bash
 # Terminal 1 — Frontend
-npm run dev
+pnpm dev
 
 # Terminal 2 — Backend
 cd backend
@@ -177,7 +172,7 @@ Backend: `http://localhost:5000`
 
 ```bash
 # Run all tests
-npm run test
+pnpm test
 
 # Backend tests
 cd backend && pytest
