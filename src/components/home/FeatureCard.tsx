@@ -1,10 +1,10 @@
-import { ReactNode } from "react"
+import { ReactNode } from "react";
 
 type FeatureCardProps = {
-  title: string
-  description: string
-  icon: ReactNode
-}
+  title: string;
+  description: string;
+  icon: ReactNode;
+};
 
 /**
  * A card displaying a feature with an icon, title, and description.
@@ -18,5 +18,5 @@ export function FeatureCard({ title, description, icon }: FeatureCardProps) {
       <h3 className="mb-2 text-xl font-semibold text-text">{title}</h3>
       <p className="text-text-muted leading-relaxed">{description}</p>
     </div>
-  )
+  );
 }

@@ -237,11 +237,8 @@ export default function WorkspacePage() {
           />
 
           {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm flex flex-col gap-1">
-              <strong className="text-destructive text-xs uppercase">
-                Error: {error.code}
-              </strong>
-              <span className="text-text-muted text-xs">{error.message}</span>
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive/80 font-medium leading-relaxed">
+              {error.message}
             </div>
           )}
 
