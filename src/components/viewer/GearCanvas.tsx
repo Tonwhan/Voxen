@@ -19,6 +19,14 @@ interface GearCanvasProps {
   onSelectPart?: (partId: string | null) => void;
 }
 
+const GEAR_PARAMS: GearParams = {
+  numTeeth: 24,
+  module: 3,
+  faceWidth: 15,
+  boreDiameter: 20,
+  pressureAngle: 20,
+};
+
 export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   
@@ -27,26 +35,21 @@ export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
     onSelectPartRef.current = onSelectPart;
   }, [onSelectPart]);
 
-  // Hardcoded params for the mockup based on user code
-  const gearParams: GearParams = {
-    numTeeth: 24,
-    module: 3,
-    faceWidth: 15,
-    boreDiameter: 20,
-    pressureAngle: 20,
-  };
-
   useEffect(() => {
     if (!mountRef.current) return;
+    const container = mountRef.current;
+    
+    // Clear any lingering canvases from Fast Refresh or strict mode
+    container.innerHTML = "";
 
     // Derived dimensions
-    const pitchDiameter = gearParams.module * gearParams.numTeeth;
-    const outsideDiameter = gearParams.module * (gearParams.numTeeth + 2);
+    const pitchDiameter = GEAR_PARAMS.module * GEAR_PARAMS.numTeeth;
+    const outsideDiameter = GEAR_PARAMS.module * (GEAR_PARAMS.numTeeth + 2);
 
     // Scene setup
     const scene = new THREE.Scene();
-    // Use transparent background to blend with Voxen's dark theme
-    scene.background = null;
+    // Explicitly set black background to prevent white flashes during WebGL initialization
+    scene.background = new THREE.Color(0x000000);
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
@@ -58,7 +61,7 @@ export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
     camera.position.set(60, 50, 60);
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(
       mountRef.current.clientWidth,
       mountRef.current.clientHeight,
@@ -120,7 +123,7 @@ export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
 
     // Grid helper (Match Workspace styling)
     const gridHelper = new THREE.GridHelper(200, 100, 0x404040, 0x303030);
-    gridHelper.position.y = -gearParams.faceWidth / 2 - 10;
+    gridHelper.position.y = -GEAR_PARAMS.faceWidth / 2 - 10;
     // Add transparency to simulate fading effect
     if (!Array.isArray(gridHelper.material)) {
       gridHelper.material.transparent = true;
@@ -206,7 +209,7 @@ export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
     };
 
     // Create gear mesh
-    const gearGeometry = createGearGeometry(gearParams);
+    const gearGeometry = createGearGeometry(GEAR_PARAMS);
     gearGeometry.center();
     gearGeometry.rotateX(Math.PI / 2);
 
@@ -230,9 +233,9 @@ export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
       return label;
     };
 
-    const pcdRadius = (gearParams.module * gearParams.numTeeth) / 2;
-    const outerRadius = pcdRadius + gearParams.module;
-    const fw = gearParams.faceWidth;
+    const pcdRadius = (GEAR_PARAMS.module * GEAR_PARAMS.numTeeth) / 2;
+    const outerRadius = pcdRadius + GEAR_PARAMS.module;
+    const fw = GEAR_PARAMS.faceWidth;
 
     // Pitch Circle Diameter
     scene.add(
@@ -388,18 +391,18 @@ export const GearCanvas: React.FC<GearCanvasProps> = ({ onSelectPart }) => {
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       cancelAnimationFrame(animationFrameId);
-      if (mountRef.current) {
-        if (renderer.domElement.parentNode === mountRef.current)
-          mountRef.current.removeChild(renderer.domElement);
-        if (labelRenderer.domElement.parentNode === mountRef.current)
-          mountRef.current.removeChild(labelRenderer.domElement);
-      }
+      
+      if (renderer.domElement.parentNode === container)
+        container.removeChild(renderer.domElement);
+      if (labelRenderer.domElement.parentNode === container)
+        container.removeChild(labelRenderer.domElement);
+        
       controls.dispose();
       gearGeometry.dispose();
       gearMaterial.dispose();
       renderer.dispose();
     };
-  }, [gearParams]);
+  }, []);
 
   return <div ref={mountRef} className="w-full h-full cursor-default" />;
 };
