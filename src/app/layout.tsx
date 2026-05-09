@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Geist } from "next/font/google";
+import { IBM_Plex_Mono, Geist, Crimson_Pro } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 
@@ -18,6 +18,12 @@ const geist = Geist({
   variable: "--font-geist",
 });
 
+const crimsonPro = Crimson_Pro({
+  subsets: ["latin"],
+  style: ["italic", "normal"],
+  variable: "--font-serif",
+});
+
 export const metadata: Metadata = {
   title: "Voxen — Generative CAD for Engineering",
   description:
@@ -32,10 +38,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${ibmPlexMono.variable} ${geist.variable} h-full antialiased`}
+      className={`${ibmPlexMono.variable} ${geist.variable} ${crimsonPro.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>{children}</ClerkProvider>
+        <ClerkProvider afterSignOutUrl="/">{children}</ClerkProvider>
       </body>
     </html>
   );

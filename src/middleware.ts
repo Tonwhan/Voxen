@@ -1,12 +1,16 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isProtectedRoute = createRouteMatcher(["/workspace(.*)"]);
-
-// CONNECTS TO: Clerk Auth
-// PURPOSE: protecting workspace routes and managing user sessions
-// NOTE: token is automatically attached via Clerk middleware
+const isLandingPage = createRouteMatcher(["/"]);
 
 export default clerkMiddleware(async (auth, req) => {
+  const { userId } = await auth();
+
+  // Redirect logged-in users from landing page to workspace
+  if (userId && isLandingPage(req)) {
+    return Response.redirect(new URL("/workspace", req.url));
+  }
+
   if (isProtectedRoute(req)) {
     await auth.protect();
   }

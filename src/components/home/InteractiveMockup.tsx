@@ -1,19 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { SceneCanvas } from "../viewer/SceneCanvas";
+import { GearCanvas } from "../viewer/GearCanvas";
 import { Assembly, Part } from "@/types/assembly";
+import { ScrambleText } from "./ScrambleText";
 import {
-  Box,
-  Settings,
   Info,
   MousePointer2,
   Palette,
   Move,
   Activity,
   Lightbulb,
-  Download,
   Layers,
+  Box,
 } from "lucide-react";
 
 // Helper components matching PartInspectPanel.tsx
@@ -52,52 +51,47 @@ const SectionHeader = ({ icon: Icon, title }: { icon: any; title: string }) => (
 );
 
 const MOCK_ASSEMBLY: Assembly = {
-  assemblyName: "VX-01 Turbine Core",
-  version: "1.2.0",
+  assemblyName: "Standard Involute Gear",
+  version: "1.0.0",
   parts: [
     {
-      id: "part-1",
-      name: "Main Housing",
-      shape: "box",
-      position: [0, 1, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      color: "#333333",
-      geometry: {
-        type: "box",
-        dimensions: { width: 2, height: 2, depth: 2 },
-      },
-      material: { name: "Titanium Alloy", description: "Grade 5 Aerospace" },
-      designIntent:
-        "Primary structural support with optimized thermal dissipation",
-    },
-    {
-      id: "part-2",
-      name: "Rotor Shaft",
+      id: "gear-main",
+      name: "Gear Body",
       shape: "cylinder",
-      position: [0, 3.5, 0],
-      rotation: [0, 0, 0],
+      position: [0, 0, 0],
+      rotation: [90, 0, 0],
       scale: [1, 1, 1],
-      color: "#FF6B00",
+      color: "#888888",
       geometry: {
         type: "cylinder",
-        dimensions: { width: 0.2, height: 3, depth: 0.2 },
+        dimensions: { width: 78, height: 15, depth: 78 }, // roughly based on Do
       },
-      material: { name: "Stainless Steel", description: "316L High Polished" },
-      designIntent:
-        "High-speed rotational transmission with zero-tolerance fitment",
+      material: {
+        name: "Steel Alloy",
+        description: "High-carbon steel for structural integrity",
+      },
+      designIntent: "Primary power transmission component",
     },
   ],
   metadata: {
     generatedAt: new Date().toISOString(),
-    promptSummary: "High-performance turbine assembly with titanium housing",
+    promptSummary: "24-tooth standard involute gear with 20mm bore",
   },
 };
 
 export function InteractiveMockup() {
-  const [selectedPart, setSelectedPart] = useState<Part | null>(
-    MOCK_ASSEMBLY.parts[0],
-  );
+  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
+
+  const handleSelectPart = (partId: string | null) => {
+    if (partId) {
+      const part = MOCK_ASSEMBLY.parts.find((p) => p.id === partId);
+      if (part) setSelectedPart(part);
+    } else {
+      setSelectedPart(null);
+    }
+  };
+
+  const showOverview = !selectedPart || MOCK_ASSEMBLY.parts.length === 1;
 
   return (
     <section
@@ -109,7 +103,7 @@ export function InteractiveMockup() {
           className="text-[10px] tracking-[0.3em] uppercase text-[#FF6B00] mb-4 block"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          [ INTERACTIVE PREVIEW ]
+          <ScrambleText text="[ INTERACTIVE PREVIEW ]" />
         </span>
         <h2 className="text-4xl font-light text-white">
           Real-time{" "}
@@ -125,9 +119,12 @@ export function InteractiveMockup() {
       </div>
 
       <div className="relative group/mockup">
-        {/* Atmospheric Edge Effect */}
+        {/* Atmospheric Edge & Glow Effects */}
         <div className="absolute -inset-[1px] bg-gradient-to-b from-white/10 via-transparent to-transparent rounded-[12px] pointer-events-none" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-px bg-gradient-to-r from-transparent via-[#FFFFFF]/50 to-transparent blur-[2px] z-20" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[2px] bg-gradient-to-r from-transparent via-[#FF6B00]/40 to-transparent blur-md z-20" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[1.5px] bg-gradient-to-r from-transparent via-[#FF6B00]/60 to-transparent blur-sm z-20" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[40%] h-px bg-gradient-to-r from-transparent via-[#FF6B00] to-transparent z-20" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[20%] h-px bg-gradient-to-r from-transparent via-white/50 to-transparent z-30" />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-black border border-white/5 rounded-[12px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] relative z-10">
           {/* Main Viewer Area */}
@@ -154,12 +151,7 @@ export function InteractiveMockup() {
               </span>
             </div>
 
-            <SceneCanvas
-              assembly={MOCK_ASSEMBLY}
-              onPartClick={(p) => setSelectedPart(p)}
-              selectedPartId={selectedPart?.id}
-              onMissed={() => setSelectedPart(null)}
-            />
+            <GearCanvas onSelectPart={handleSelectPart} />
           </div>
 
           {/* Side Panel: Properties (Styled after PartInspectPanel.tsx) */}
@@ -167,13 +159,13 @@ export function InteractiveMockup() {
             {/* Panel Header */}
             <div className="h-10 border-b border-white/5 flex items-center px-4 bg-white/[0.02]">
               <h3 className="text-[9px] font-bold uppercase tracking-wider text-white/30">
-                Properties Grid
+                PROJECT OVERVIEW
               </h3>
             </div>
 
             {/* Panel Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/20">
-              {selectedPart ? (
+              {!showOverview ? (
                 <div className="animate-fade-up">
                   <SectionHeader icon={Info} title="General" />
                   <PropertyRow label="Name" value={selectedPart.name} />
@@ -214,6 +206,13 @@ export function InteractiveMockup() {
                     value={selectedPart.position[2].toFixed(2)}
                   />
 
+                  <SectionHeader icon={Box} title="Dimensions" />
+                  <PropertyRow label="Pitch Circle Dia." value="72 mm" />
+                  <PropertyRow label="Module (Size)" value="3 mm" />
+                  <PropertyRow label="Teeth Count" value="24" />
+                  <PropertyRow label="Pressure Angle" value="20°" />
+                  <PropertyRow label="Thickness" value="15 mm" />
+
                   <SectionHeader icon={Activity} title="AI Insight" />
                   <div className="p-3 text-[10px] text-white/60 bg-white/[0.02] italic leading-relaxed border-b border-white/5 font-mono">
                     "{selectedPart.designIntent}"
@@ -244,6 +243,13 @@ export function InteractiveMockup() {
                   />
                   <PropertyRow label="Status" value="Ready / Validated" />
 
+                  <SectionHeader icon={Box} title="Dimensions" />
+                  <PropertyRow label="Pitch Circle Dia." value="72 mm" />
+                  <PropertyRow label="Module (Size)" value="3 mm" />
+                  <PropertyRow label="Teeth Count" value="24" />
+                  <PropertyRow label="Pressure Angle" value="20°" />
+                  <PropertyRow label="Thickness" value="15 mm" />
+
                   <SectionHeader icon={Activity} title="AI Design Strategy" />
                   <div className="p-4 space-y-6">
                     <div>
@@ -251,32 +257,31 @@ export function InteractiveMockup() {
                         Design Rationale
                       </p>
                       <p className="text-[10px] text-white/40 leading-relaxed font-mono">
-                        Optimized for weight-to-strength ratio using generative
-                        lattice structures in the core housing. Thermal
-                        dissipation paths are aligned with high-speed rotor
-                        vectors.
+                        Standard involute tooth profile ensures constant
+                        velocity ratio and minimizes vibration during power
+                        transmission.
                       </p>
                     </div>
 
                     <div>
                       <p className="text-[9px] font-bold text-[#FF6B00] uppercase mb-2 tracking-widest">
-                        Prototype Phase
+                        Manufacturing Process
                       </p>
                       <p className="text-[10px] text-white/40 leading-relaxed font-mono">
-                        Recommended: SLA 3D Printing with High-Temp Resin. Focus
-                        on dimensional fitment and assembly clearance validation
-                        before final material selection.
+                        Recommended: Hobbing or shaping for the gear teeth,
+                        followed by case hardening to improve wear resistance on
+                        the tooth flanks.
                       </p>
                     </div>
 
                     <div>
                       <p className="text-[9px] font-bold text-[#FF6B00] uppercase mb-2 tracking-widest">
-                        Production Roadmap
+                        Assembly Notes
                       </p>
                       <p className="text-[10px] text-white/40 leading-relaxed font-mono">
-                        Recommended: 5-Axis CNC Milling for the main housing.
-                        For scale, switch to Titanium Investment Casting to
-                        maintain structural integrity at high RPMs.
+                        Ensure standard backlash clearance (typically 0.1 -
+                        0.2mm) when meshing with mating gear. Apply ISO VG 220
+                        gear oil.
                       </p>
                     </div>
                   </div>

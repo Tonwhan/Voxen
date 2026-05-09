@@ -2,6 +2,7 @@
 
 import { Layers, Cpu, Zap, Download } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { ScrambleText } from "./ScrambleText";
 
 const FEATURES = [
   {
@@ -49,7 +50,7 @@ export function FeaturesGrid() {
           className="text-[10px] tracking-[0.3em] uppercase text-[#FF6B00] mb-4 block"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          [ CORE FEATURES ]
+          <ScrambleText text="[ CORE FEATURES ]" />
         </span>
         <h2 className="text-4xl font-light text-white">
           What makes Voxen <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">unstoppable</span>

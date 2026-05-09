@@ -1,12 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 export function HeroSection() {
   const router = useRouter();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Placeholder typing animation logic
+  const phrases = [
+    "Create a high-performance turbine blade...",
+    "Design a modular robotic arm joint...",
+    "Generate a custom heat sink for CPUs...",
+    "Describe your CAD assembly...",
+  ];
+
+  const [isFocused, setIsFocused] = useState(false);
+  const [placeholder, setPlaceholder] = useState("");
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [typingSpeed, setTypingSpeed] = useState(100);
+
+  useEffect(() => {
+    if (isFocused) {
+      setPlaceholder("Describe your CAD assembly...");
+      return;
+    }
+
+    const currentPhrase = phrases[phraseIndex];
+
+    const timer = setTimeout(() => {
+      if (!isDeleting) {
+        // Typing
+        setPlaceholder(currentPhrase.substring(0, charIndex + 1));
+        setCharIndex((prev) => prev + 1);
+        setTypingSpeed(80 + Math.random() * 40);
+
+        if (charIndex + 1 === currentPhrase.length) {
+          // Finished typing a phrase
+          if (phraseIndex < phrases.length - 1) {
+            // Not the last phrase, wait then start deleting
+            setTypingSpeed(2000);
+            setIsDeleting(true);
+          } else {
+            // Last phrase (the actual placeholder), stop here
+          }
+        }
+      } else {
+        // Deleting
+        setPlaceholder(currentPhrase.substring(0, charIndex - 1));
+        setCharIndex((prev) => prev - 1);
+        setTypingSpeed(40);
+
+        if (charIndex - 1 === 0) {
+          setIsDeleting(false);
+          setPhraseIndex((prev) => (prev + 1) % phrases.length);
+          setTypingSpeed(500);
+        }
+      }
+    }, typingSpeed);
+
+    return () => clearTimeout(timer);
+  }, [charIndex, isDeleting, phraseIndex, phrases, typingSpeed, isFocused]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const { clientX, clientY } = e;
@@ -41,16 +98,18 @@ export function HeroSection() {
       {/* Vignette Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black/30 pointer-events-none" />
-      
+
       {/* Seamless transition fade */}
       <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-8 w-full relative z-10">
         <div className="max-w-3xl">
           <h1 className="text-4xl md:text-6xl font-light leading-[1.1] mb-10 text-white animate-fade-up">
-            Voxen
-            <br />
-            The future of CAD
+            <span className="bg-gradient-to-br from-white to-[#888888] bg-clip-text text-transparent">
+              Voxen
+              <br />
+              The future of CAD
+            </span>
             <br />
             <span className="text-white/60">
               doesn&apos;t start with a cursor.
@@ -67,15 +126,14 @@ export function HeroSection() {
               border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: "8px",
               backdropFilter: "blur(12px)",
-              animationDelay: "200ms"
+              animationDelay: "200ms",
             }}
           >
-            <Sparkles size={16} className="text-[#FF6B00] flex-shrink-0" />
             <input
               type="text"
-              placeholder="Describe your CAD assembly..."
+              placeholder={placeholder}
+              onFocus={() => setIsFocused(true)}
               className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 text-sm"
-              style={{ fontFamily: "var(--font-geist)" }}
             />
             <button
               className="px-4 py-1.5 bg-[#FF6B00] hover:bg-[#FF8C33] text-white text-xs tracking-wider uppercase rounded-[4px] transition-all cursor-pointer"

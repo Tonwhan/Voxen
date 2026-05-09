@@ -2,6 +2,7 @@
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { AccordionItem } from "./AccordionItem";
+import { ScrambleText } from "./ScrambleText";
 
 const STEPS = [
   {
@@ -36,7 +37,7 @@ export function HowItWorks() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
         <div>
           <span className="text-[10px] tracking-[0.3em] uppercase text-[#FF6B00] mb-4 block" style={{ fontFamily: "var(--font-mono)" }}>
-            [ ADVANTAGES ]
+            <ScrambleText text="[ ADVANTAGES ]" />
           </span>
           <h2 className="text-4xl font-light text-white leading-tight">
             Outsmart the competition <br />
