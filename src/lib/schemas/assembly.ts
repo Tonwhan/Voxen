@@ -14,11 +14,8 @@ export const PartSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Must be a valid hex color'),
   geometry: z.object({
     type: z.enum(['box', 'cylinder', 'sphere']),
-    dimensions: z.object({
-      width: z.number().positive(),
-      height: z.number().positive(),
-      depth: z.number().positive(),
-    }),
+    // Accept any numeric fields: box uses {width,height,depth}, cylinder uses {radius,height}, etc.
+    dimensions: z.record(z.number().positive()),
   }),
   material: z.object({
     name: z.string(),

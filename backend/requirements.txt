@@ -2,3 +2,6 @@ Flask==3.0.0
 openai==1.12.0
 pydantic==2.6.1
 python-dotenv==1.0.1
+trimesh==4.1.2
+numpy==1.26.4
+llama-cpp-python  # used for local inference when LLM_API_BASE_URL is not set
