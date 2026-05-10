@@ -1,6 +1,0 @@
-2026-05-10 11:45:00,142 - INFO - Initializing taxonomy engine (seed=42, samples=100)...
-2026-05-10 11:45:00,143 - INFO - --- Processing 1/100: Create a rustic spinning top made primarily of fabric. The structure should be medium (4-6 primitives).
-/home/atiyut/Documents/Voxen/backend/training/dataset_generator.py:103: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  "timestamp": datetime.utcnow().isoformat() + "Z"
-2026-05-10 11:46:00,647 - INFO - Retrying request to /chat/completions in 0.377008 seconds
-2026-05-10 11:47:01,086 - INFO - Retrying request to /chat/completions in 0.847182 seconds
