@@ -6,6 +6,7 @@ import { GenerateButton } from "@/components/workspace/GenerateButton";
 import { PartInspectPanel } from "@/components/workspace/PartInspectPanel";
 import { PartListPanel } from "@/components/workspace/PartListPanel";
 import { SceneCanvas } from "@/components/viewer/SceneCanvas";
+import { GearCanvas } from "@/components/viewer/GearCanvas";
 import {
   ProcessStatusPanel,
   ProcessStep,
@@ -25,6 +26,7 @@ export default function WorkspacePage() {
   const { user, isLoaded } = useUser();
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isExportingStep, setIsExportingStep] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [assembly, setAssembly] = useState<Assembly | null>(null);
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
@@ -41,55 +43,10 @@ export default function WorkspacePage() {
   ]);
   const [showProcessPanel, setShowProcessPanel] = useState(false);
 
-  // Initialize with demo data
+  // Initialize without demo data
   useEffect(() => {
-    const demoAssembly: Assembly = {
-      assemblyName: "Demo Assembly",
-      version: "1.0.0",
-      parts: [
-        {
-          id: "base",
-          name: "Base Block",
-          shape: "box",
-          position: [0, 0.25, 0],
-          rotation: [0, 0, 0],
-          scale: [1, 1, 1],
-          color: "#378ADD",
-          geometry: {
-            type: "box",
-            dimensions: { width: 2, height: 0.5, depth: 2 },
-          },
-          material: { name: "Plastic", description: "Blue structural plastic" },
-          designIntent: "Foundation for the assembly",
-        },
-        {
-          id: "top",
-          name: "Pillar",
-          shape: "box",
-          position: [0, 1.5, 0],
-          rotation: [0, 0, 0],
-          scale: [1, 1, 1],
-          color: "#1D9E75",
-          geometry: {
-            type: "box",
-            dimensions: { width: 0.5, height: 2, depth: 0.5 },
-          },
-          material: {
-            name: "Aluminum",
-            description: "Green anodized aluminum",
-          },
-          designIntent: "Support pillar",
-        },
-      ],
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        promptSummary: "Demo blocks with different scales",
-      },
-    };
-    setAssembly(demoAssembly);
-
-    // Artificial delay for "page load" skeleton demonstration
-    const timer = setTimeout(() => setIsAppLoading(false), 1500);
+    setAssembly(null);
+    const timer = setTimeout(() => setIsAppLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -203,13 +160,36 @@ export default function WorkspacePage() {
     });
   };
 
-  const handleExportAssembly = (format: "STL" | "OBJ") => {
+  const handleExportAssembly = async (format: "STL" | "OBJ" | "STEP") => {
     if (!assembly || assembly.parts.length === 0) return;
 
     let content = "";
     let filename = `${assembly.assemblyName.replace(/\s+/g, "_")}`;
 
-    if (format === "STL") {
+    if (format === "STEP") {
+      setIsExportingStep(true);
+      try {
+        const res = await fetch('/api/export_step', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(assembly),
+        });
+        const data = await res.json();
+        if (data.step) {
+          content = data.step;
+          filename += ".step";
+        } else {
+          toast.error("Failed to generate STEP file");
+          setIsExportingStep(false);
+          return;
+        }
+      } catch (err) {
+        toast.error("API Error generating STEP file");
+        setIsExportingStep(false);
+        return;
+      }
+      setIsExportingStep(false);
+    } else if (format === "STL") {
       content = exportSTL(assembly.parts);
       filename += ".stl";
     } else {
@@ -265,7 +245,7 @@ export default function WorkspacePage() {
                 size="sm"
                 className="flex-1 h-8 text-xs border-border hover:bg-background"
                 onClick={() => handleExportAssembly("STL")}
-                disabled={!assembly}
+                disabled={!assembly || isExportingStep}
               >
                 <Download className="w-3 h-3 mr-1" />
                 STL
@@ -275,10 +255,20 @@ export default function WorkspacePage() {
                 size="sm"
                 className="flex-1 h-8 text-xs border-border hover:bg-background"
                 onClick={() => handleExportAssembly("OBJ")}
-                disabled={!assembly}
+                disabled={!assembly || isExportingStep}
               >
                 <Download className="w-3 h-3 mr-1" />
                 OBJ
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1 h-8 text-xs bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white shadow-sm"
+                onClick={() => handleExportAssembly("STEP")}
+                disabled={!assembly || isExportingStep}
+              >
+                <Download className="w-3 h-3 mr-1" />
+                {isExportingStep ? 'WAIT...' : 'STEP'}
               </Button>
             </div>
           </div>
@@ -300,21 +290,34 @@ export default function WorkspacePage() {
 
       {/* Center Viewer */}
       <div className="flex-1 bg-surface border border-border rounded-md overflow-hidden relative min-h-[500px] shadow-sm">
-        <SceneCanvas
-          assembly={
-            assembly
-              ? {
-                  ...assembly,
-                  parts: assembly.parts.filter(
-                    (p) => !hiddenPartIds.includes(p.id),
-                  ),
-                }
-              : null
-          }
-          onPartClick={handlePartClick}
-          onMissed={handleMissed}
-          selectedPartId={selectedPart?.id}
-        />
+        {assembly?.parts.some(p => p.shape === 'gear' || p.geometry?.type === 'gear') ? (
+          <GearCanvas 
+            onSelectPart={(id) => {
+              if (id) {
+                const gearPart = assembly.parts.find(p => p.shape === 'gear' || p.geometry?.type === 'gear');
+                if (gearPart) handlePartClick(gearPart);
+              } else {
+                handleMissed();
+              }
+            }} 
+          />
+        ) : (
+          <SceneCanvas
+            assembly={
+              assembly
+                ? {
+                    ...assembly,
+                    parts: assembly.parts.filter(
+                      (p) => !hiddenPartIds.includes(p.id),
+                    ),
+                  }
+                : null
+            }
+            onPartClick={handlePartClick}
+            onMissed={handleMissed}
+            selectedPartId={selectedPart?.id}
+          />
+        )}
       </div>
 
       {/* Right Panel - Properties */}

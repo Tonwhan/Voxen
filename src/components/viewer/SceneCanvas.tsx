@@ -85,7 +85,7 @@ export function SceneCanvas({ assembly, showWireframe = false, onPartClick, onMi
         />
 
 
-        <Bounds fit clip observe margin={1.2}>
+        <Bounds fit clip margin={1.2}>
           <SelectToFocus onMissed={onMissed} hasContent={hasParts}>
             {/* Render parts if assembly exists */}
             {assembly?.parts.map((part) => (

@@ -591,4 +591,4 @@ with gr.Blocks(title="VOXEN CAD Agent") as demo:
         return {"step": step_content}
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=True, css=".gradio-container { background: white; } button.primary { background: #FF6B00 !important; border: none !important; color: white !important; }")
+    demo.launch(server_name="0.0.0.0", server_port=30000, share=True, css=".gradio-container { background: white; } button.primary { background: #FF6B00 !important; border: none !important; color: white !important; }")
