@@ -390,11 +390,10 @@ def generate_cad(prompt, history=None):
             final_json = "{}"
 
     if history is not None:
-        # ใช้รูปแบบ Messages สำหรับ Gradio 6.0+
-        new_history = list(history) + [
-            {"role": "user", "content": prompt},
-            {"role": "assistant", "content": status}
-        ]
+        # มั่นใจว่าเป็นรูปแบบ Messages สำหรับ Gradio 6.0+
+        new_history = list(history)
+        new_history.append({"role": "user", "content": prompt})
+        new_history.append({"role": "assistant", "content": status})
         return new_history, "", final_json
     return final_json
 
@@ -402,7 +401,6 @@ def generate_cad(prompt, history=None):
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-# ย้าย css ไปไว้ใน launch ตามที่ Gradio เตือน
 with gr.Blocks(title="VOXEN CAD Agent") as demo:
     gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Qwen3-8B · AMD MI300X**")
     with gr.Row():
@@ -415,6 +413,8 @@ with gr.Blocks(title="VOXEN CAD Agent") as demo:
             gr.HTML(THREE_JS_VIEWER)
 
     state = gr.State([])
+    
+    # สำหรับ Gradio 6.0+ แนะนำให้ใช้ list ของ dict ในการเก็บ state
     btn.click(generate_cad, [msg, state], [state, msg, json_out]).then(
         lambda s: s, state, chatbot
     ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
