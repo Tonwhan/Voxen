@@ -200,21 +200,16 @@ THREE_JS_VIEWER = """
 </div>
 </div>
 
-<script src="https://unpkg.com/three@0.150.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js" type="module"></script>
-<script src="https://unpkg.com/three@0.150.0/examples/jsm/exporters/OBJExporter.js" type="module"></script>
-<script src="https://unpkg.com/three@0.150.0/examples/jsm/exporters/STLExporter.js" type="module"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
 
-<script type="module">
-import * as THREE from 'https://unpkg.com/three@0.150.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js';
-import { OBJExporter } from 'https://unpkg.com/three@0.150.0/examples/jsm/exporters/OBJExporter.js';
-import { STLExporter } from 'https://unpkg.com/three@0.150.0/examples/jsm/exporters/STLExporter.js';
-
-let scene, camera, renderer, controls, group;
+<script>
+var scene, camera, renderer, controls, group;
 
 function init() {
-  const container = document.getElementById("canvas-container");
+  var container = document.getElementById("canvas-container");
   if (!container || scene) return;
   if (container.clientWidth === 0) { setTimeout(init, 200); return; }
 
@@ -229,11 +224,11 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
   
-  controls = new OrbitControls(camera, renderer.domElement);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   
   scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+  var sun = new THREE.DirectionalLight(0xffffff, 0.6);
   sun.position.set(1000, 2000, 1000);
   scene.add(sun);
   
@@ -248,19 +243,24 @@ function init() {
     renderer.render(scene, camera);
   }
   animate();
-  console.log("VOXEN ENGINE ONLINE");
+  console.log("VOXEN ENGINE ONLINE (CLASSIC MODE)");
 }
 
 function createGear(params) {
-  const { teeth=24, module=3, height=15, bore=20 } = params;
-  const pr = (module * teeth) / 2;
-  const or = pr + module;
-  const rr = pr - 1.25 * module;
-  const shape = new THREE.Shape();
-  const step = (Math.PI * 2) / teeth;
-  for(let i=0; i<teeth; i++) {
-    const a = i * step;
-    const ha = (Math.PI / teeth) * 0.4;
+  var teeth = params.teeth || 24;
+  var module = params.module || 3;
+  var height = params.height || 15;
+  var bore = params.bore || 20;
+  
+  var pr = (module * teeth) / 2;
+  var or = pr + module;
+  var rr = pr - 1.25 * module;
+  var shape = new THREE.Shape();
+  var step = (Math.PI * 2) / teeth;
+  
+  for(var i=0; i<teeth; i++) {
+    var a = i * step;
+    var ha = (Math.PI / teeth) * 0.4;
     if(i===0) shape.moveTo(rr * Math.cos(a-ha*1.2), rr * Math.sin(a-ha*1.2));
     shape.lineTo(rr * Math.cos(a-ha*1.2), rr * Math.sin(a-ha*1.2));
     shape.lineTo(pr * Math.cos(a-ha), pr * Math.sin(a-ha));
@@ -269,23 +269,25 @@ function createGear(params) {
     shape.lineTo(rr * Math.cos(a+ha*1.2), rr * Math.sin(a+ha*1.2));
   }
   shape.closePath();
-  const hole = new THREE.Path();
+  var hole = new THREE.Path();
   hole.absarc(0,0, bore/2, 0, Math.PI*2, true);
   shape.holes.push(hole);
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.5 });
+  
+  var geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.5 });
   geo.center(); geo.rotateX(Math.PI/2);
   return geo;
 }
 
 window.renderCAD = function(data) {
   if (!data || data === '{}') return;
-  if (!scene) { init(); setTimeout(() => window.renderCAD(data), 500); return; }
+  if (!scene) { init(); setTimeout(function(){ window.renderCAD(data); }, 500); return; }
   
   try {
-    const cad = typeof data === 'string' ? JSON.parse(data) : data;
+    var cad = typeof data === 'string' ? JSON.parse(data) : data;
     while(group.children.length > 0) {
-      const o = group.children[0];
-      o.geometry.dispose(); o.material.dispose();
+      var o = group.children[0];
+      if(o.geometry) o.geometry.dispose();
+      if(o.material) o.material.dispose();
       group.remove(o);
     }
 
@@ -299,46 +301,60 @@ window.renderCAD = function(data) {
       document.getElementById("s-notes").innerText = cad.designStrategy.notes || "-";
     }
 
-    cad.parts.forEach(p => {
-      const d = p.geometry.dimensions;
-      let geo;
-      if(p.shape === 'gear') geo = createGear(d);
-      else if(p.shape === 'cylinder') geo = new THREE.CylinderGeometry(d.width/2, d.width/2, d.height, 32);
-      else geo = new THREE.BoxGeometry(d.width||50, d.height||50, d.depth||50);
-      
-      const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: p.color || 0xFF6B00, metalness: 0.2, roughness: 0.7 }));
-      mesh.position.set(p.position[0], p.position[1] + (d.height||50)/2, p.position[2]);
-      if(p.rotation) mesh.rotation.set(p.rotation[0]*Math.PI/180, p.rotation[1]*Math.PI/180, p.rotation[2]*Math.PI/180);
-      group.add(mesh);
-    });
+    if(cad.parts) {
+      cad.parts.forEach(function(p) {
+        var d = p.geometry.dimensions;
+        var geo;
+        if(p.shape === 'gear' || p.geometry.type === 'gear') geo = createGear(d);
+        else if(p.shape === 'cylinder' || p.geometry.type === 'cylinder') geo = new THREE.CylinderGeometry(d.width/2, d.width/2, d.height, 32);
+        else geo = new THREE.BoxGeometry(d.width||50, d.height||50, d.depth||50);
+        
+        var mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: p.color || 0xFF6B00, metalness: 0.2, roughness: 0.7 }));
+        mesh.position.set(p.position[0], p.position[1] + (d.height||50)/2, p.position[2]);
+        if(p.rotation) mesh.rotation.set(p.rotation[0]*Math.PI/180, p.rotation[1]*Math.PI/180, p.rotation[2]*Math.PI/180);
+        group.add(mesh);
+      });
+    }
 
-    const box = new THREE.Box3().setFromObject(group);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
+    var box = new THREE.Box3().setFromObject(group);
+    var center = box.getCenter(new THREE.Vector3());
+    var size = box.getSize(new THREE.Vector3());
     controls.target.copy(center);
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const dist = maxDim * 2.5;
+    var maxDim = Math.max(size.x, size.y, size.z);
+    var dist = maxDim * 2.5;
     camera.position.set(center.x + dist, center.y + dist, center.z + dist);
     camera.lookAt(center);
   } catch(e) { console.error("CAD Render Error:", e); }
 };
 
 window.runExport = function(type) {
-  if(!group) return;
-  let res, name, mime;
-  if(type==='OBJ') { res = new OBJExporter().parse(group); name='model.obj'; mime='text/plain'; }
-  else if(type==='STL') { res = new STLExporter().parse(group, {binary:true}); name='model.stl'; mime='application/octet-stream'; }
-  else { alert("STEP Export requires backend processing."); return; }
-  const b = new Blob([res], {type:mime});
-  const u = URL.createObjectURL(b);
-  const l = document.createElement('a'); l.href=u; l.download=name; l.click();
+  if(!group || group.children.length === 0) return alert("No model to export");
+  var res, name, mime;
+  if(type==='OBJ') { 
+    var exporter = new THREE.OBJExporter();
+    res = exporter.parse(group); 
+    name='model.obj'; mime='text/plain'; 
+  } else if(type==='STL') { 
+    var exporter = new THREE.STLExporter();
+    res = exporter.parse(group, {binary:true}); 
+    name='model.stl'; mime='application/octet-stream'; 
+  } else { 
+    alert("STEP Export requires backend CAD kernel."); 
+    return; 
+  }
+  var b = new Blob([res], {type:mime});
+  var u = URL.createObjectURL(b);
+  var l = document.createElement('a'); l.href=u; l.download=name; l.click();
 };
 
-// Auto-init
-setTimeout(init, 500);
-
-// For Gradio call
-window.top.renderCAD = window.renderCAD;
+function startEngine() {
+  if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+    init();
+  } else {
+    setTimeout(startEngine, 200);
+  }
+}
+startEngine();
 </script>
 """
 
@@ -407,11 +423,12 @@ with gr.Blocks(title="VOXEN CAD Agent") as demo:
     )
 
     # API
+    from fastapi import Request
     from fastapi.middleware.cors import CORSMiddleware
     app = demo.app
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
     @app.post("/generate")
-    async def api_gen(request: gr.Request):
+    async def api_gen(request: Request):
         data = await request.json()
         return json.loads(generate_cad(data.get("prompt", "")))
 
