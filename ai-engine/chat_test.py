@@ -17,14 +17,22 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=True,
 )
 
+SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON. No thinking, no explanation.
+
+Expected JSON structure:
+{
+  "assemblyName": "Name of project",
+  "parts": [...],
+  "dimensions": [{"label": "...", "value": "..."}],
+  "designStrategy": {"rationale": "...", "process": "...", "notes": "..."}
+}"""
+
 print(f"✅ Loaded on: {next(model.parameters()).device}")
 print("Type 'quit' to exit\n")
 
-messages = []
-
 while True:
     try:
-        user_input = input("You: ").strip()
+        user_input = input("You (Prompt for CAD): ").strip()
     except (EOFError, KeyboardInterrupt):
         break
 
@@ -33,10 +41,14 @@ while True:
     if not user_input:
         continue
 
-    messages.append({"role": "user", "content": user_input})
+    # สร้าง messages ใหม่ทุกครั้งสำหรับการทดสอบ CAD (หรือทำเป็น Chat history ก็ได้)
+    current_messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Generate CAD JSON for: {user_input}"}
+    ]
 
     text = tokenizer.apply_chat_template(
-        messages,
+        current_messages,
         tokenize=False,
         add_generation_prompt=True,
     )
@@ -46,15 +58,14 @@ while True:
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=512,
-            temperature=0.7,
+            max_new_tokens=1024,
+            temperature=0.1,
             do_sample=True,
-            repetition_penalty=1.1,
+            top_p=0.9,
             pad_token_id=tokenizer.eos_token_id,
         )
 
     new_tokens = outputs[0][len(inputs["input_ids"][0]):]
     response = tokenizer.decode(new_tokens, skip_special_tokens=True)
 
-    messages.append({"role": "assistant", "content": response})
-    print(f"\nVoxen: {response}\n")
+    print(f"\n--- VOXEN CAD ENGINE OUTPUT ---\n{response}\n-------------------------------\n")
