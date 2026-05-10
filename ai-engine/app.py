@@ -161,7 +161,6 @@ THREE_JS_VIEWER = """
        <div class="prop-row"><div class="prop-label">Project</div><div class="prop-value" id="val-project">-</div></div>
        <div class="prop-row"><div class="prop-label">Version</div><div class="prop-value" id="val-version">-</div></div>
        <div class="prop-row"><div class="prop-label">Parts</div><div class="prop-value" id="val-parts">-</div></div>
-       <div class="prop-row"><div class="prop-label">Status</div><div class="prop-value" style="color: #4ade80">Ready / Validated</div></div>
     </div>
     
     <div class="section-header">Dimensions</div>
@@ -196,8 +195,8 @@ function init3D() {
   const width = container.clientWidth;
   const height = 650;
   
-  camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-  camera.position.set(400, 300, 400);
+  camera = new THREE.PerspectiveCamera(45, width / height, 1, 50000);
+  camera.position.set(2000, 1500, 2000);
   
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(width, height);
@@ -218,7 +217,7 @@ function init3D() {
   fillLight.position.set(-500, 200, -500);
   scene.add(fillLight);
   
-  const grid = new THREE.GridHelper(2000, 100, 0x333333, 0x111111);
+  const grid = new THREE.GridHelper(10000, 100, 0x333333, 0x151515);
   scene.add(grid);
   
   group = new THREE.Group();
@@ -314,8 +313,11 @@ window.renderCAD = function(data) {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       controls.target.copy(center);
-      const maxD = Math.max(size.x, size.y, size.z);
-      camera.position.set(center.x + maxD * 2, center.y + maxD * 1.5, center.z + maxD * 2);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+      cameraZ *= 2.5; // Zoom out buffer
+      camera.position.set(center.x + cameraZ, center.y + cameraZ * 0.8, center.z + cameraZ);
       camera.lookAt(center);
     }
   } catch (e) { console.error("Render error:", e); }
@@ -388,8 +390,11 @@ def generate_cad(prompt, history=None):
             final_json = "{}"
 
     if history is not None:
-        # กลับไปใช้รูปแบบ List of Tuples สำหรับ Gradio เวอร์ชันเก่า/มาตรฐาน
-        new_history = list(history) + [(prompt, status)]
+        # ใช้รูปแบบ Messages สำหรับ Gradio 6.0+
+        new_history = list(history) + [
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": status}
+        ]
         return new_history, "", final_json
     return final_json
 
@@ -402,7 +407,7 @@ with gr.Blocks(title="VOXEN CAD Agent") as demo:
     gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Qwen3-8B · AMD MI300X**")
     with gr.Row():
         with gr.Column(scale=4):
-            chatbot = gr.Chatbot(height=400, label="Chat") # ลบ type="messages"
+            chatbot = gr.Chatbot(height=400, label="Chat") 
             msg = gr.Textbox(placeholder="e.g. industrial gearbox", label="Prompt", lines=2)
             btn = gr.Button("⚙️ Generate CAD", variant="primary")
             json_out = gr.Code(language="json", label="Assembly JSON", lines=10)
@@ -438,9 +443,9 @@ with gr.Blocks(title="VOXEN CAD Agent") as demo:
         return JSONResponse(json.loads(result_json))
 
 if __name__ == "__main__":
-    # ย้าย css มาที่นี่เพื่อรองรับ Gradio 6.0+
     demo.launch(
         server_name="0.0.0.0", 
         server_port=7860,
+        share=True,
         css=".gradio-container { background: #050505; color: #eee; } button.primary { background: #FF6B00 !important; border: none !important; }"
     )
