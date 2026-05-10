@@ -15,10 +15,6 @@ from taxonomy import generate_prompts
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = os.getenv("TEACHER_API_BASE_URL", "http://127.0.0.1:11434/v1")
-API_KEY = os.getenv("TEACHER_API_KEY", "ollama")
-TEACHER_MODEL = os.getenv("TEACHER_MODEL", "qwen3:8b")
-
 SCHEMA_VERSION = "v2.symbolic"
 DATASET_VERSION = "v1"
 
@@ -26,17 +22,27 @@ DATASET_A_FILE = f"dataset_{DATASET_VERSION}_A_intent.jsonl"
 DATASET_B_FILE = f"dataset_{DATASET_VERSION}_B_symbolic.jsonl"
 NEGATIVES_FILE = f"dataset_{DATASET_VERSION}_negatives.jsonl"
 
-client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+import requests
+
+API_BASE_URL = os.getenv("TEACHER_API_BASE_URL", "http://127.0.0.1:11434/v1")
+TEACHER_MODEL = os.getenv("TEACHER_MODEL", "qwen3:8b")
 
 def call_llm(messages: list, temperature: float = 0.7) -> str | None:
     try:
-        response = client.chat.completions.create(
-            model=TEACHER_MODEL,
-            messages=messages,
-            response_format={"type": "json_object"},
-            temperature=temperature,
+        payload = {
+            "model": TEACHER_MODEL,
+            "messages": messages,
+            "temperature": temperature,
+            "stream": False,
+            "response_format": {"type": "json_object"}
+        }
+        response = requests.post(
+            f"{API_BASE_URL}/chat/completions",
+            json=payload,
+            timeout=120 # High timeout for local inference
         )
-        return response.choices[0].message.content
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         logger.error(f"LLM API Error: {e}")
         return None
