@@ -1,13 +1,11 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/workspace(.*)"]);
-
-export default clerkMiddleware(async (auth, req) => {
-  // Only protect workspace routes - no landing page redirect to avoid edge runtime issues
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-});
+// Passthrough middleware - Clerk auth bypassed for hackathon demo
+// TODO: Re-enable Clerk after setting env vars on Vercel dashboard
+export default function middleware(_req: NextRequest) {
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
