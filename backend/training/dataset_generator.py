@@ -15,9 +15,9 @@ from taxonomy import generate_prompts
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = os.getenv("TEACHER_API_BASE_URL", "https://api.openai.com/v1")
-API_KEY = os.getenv("TEACHER_API_KEY", "your-api-key-here")
-TEACHER_MODEL = os.getenv("TEACHER_MODEL", "gpt-4o")
+API_BASE_URL = os.getenv("TEACHER_API_BASE_URL", "http://localhost:8000/v1")
+API_KEY = os.getenv("TEACHER_API_KEY", "dummy")
+TEACHER_MODEL = os.getenv("TEACHER_MODEL", "Qwen/Qwen2.5-1.5B-Instruct")
 
 SCHEMA_VERSION = "v2.symbolic"
 DATASET_VERSION = "v1"
