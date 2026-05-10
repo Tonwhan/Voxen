@@ -6,26 +6,38 @@ import re
 
 MODEL_PATH = "./models/qwen3-8b"
 
-SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON. No thinking, no explanation.
+SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON according to the schema. No thinking, no explanation.
 
 Expected JSON structure:
 {
-  "assemblyName": "Name of project",
+  "assemblyName": "Project Name",
+  "version": "1.0.0",
   "parts": [
     {
-      "id": "unique_id",
+      "id": "part_1",
       "name": "Part Name",
+      "shape": "box" | "cylinder",
+      "position": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "scale": [1, 1, 1],
       "color": "#HEXCODE",
       "geometry": {
         "type": "box" | "cylinder",
-        "dimensions": {"width": 100, "height": 10, "depth": 50},
-        "position": {"x": 0, "y": 0, "z": 0}
-      }
+        "dimensions": {"width": 100, "height": 10, "depth": 50}
+      },
+      "material": {
+        "name": "Material Name",
+        "description": "Description..."
+      },
+      "designIntent": "Purpose of this part"
     }
   ],
+  "metadata": {
+    "generatedAt": "ISO_TIMESTAMP",
+    "promptSummary": "Short summary of the request"
+  },
   "dimensions": [
-    {"label": "Overall Width", "value": "1200mm"},
-    {"label": "Overall Height", "value": "450mm"}
+    {"label": "Overall Width", "value": "1200mm"}
   ],
   "designStrategy": {
     "rationale": "Why this design works...",
@@ -139,7 +151,7 @@ THREE_JS_VIEWER = """
 <div id="viewer-container">
   <div id="canvas-container">
     <div id="viewer-overlay">
-      <div class="badge">AI CAD ENGINE v1.0</div>
+      <div class="badge">AI CAD ENGINE v1.2 [SYNCED]</div>
       <div id="assembly-name-label" style="margin-top: 8px; color: #fff; font-weight: bold; font-size: 14px;"></div>
     </div>
   </div>
@@ -147,7 +159,7 @@ THREE_JS_VIEWER = """
     <div class="section-header">Project Overview</div>
     <div id="overview-content">
        <div class="prop-row"><div class="prop-label">Project</div><div class="prop-value" id="val-project">-</div></div>
-       <div class="prop-row"><div class="prop-label">Version</div><div class="prop-value">1.0.0</div></div>
+       <div class="prop-row"><div class="prop-label">Version</div><div class="prop-value" id="val-version">-</div></div>
        <div class="prop-row"><div class="prop-label">Parts</div><div class="prop-value" id="val-parts">-</div></div>
        <div class="prop-row"><div class="prop-label">Status</div><div class="prop-value" style="color: #4ade80">Ready / Validated</div></div>
     </div>
@@ -194,7 +206,6 @@ function init3D() {
   
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
   
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -214,16 +225,13 @@ function init3D() {
   scene.add(group);
   
   animate();
-  
-  window.addEventListener('resize', onWindowResize);
-}
-
-function onWindowResize() {
-  const container = document.getElementById("canvas-container");
-  if (!container) return;
-  camera.aspect = container.clientWidth / 650;
-  camera.updateProjectionMatrix();
-  renderer.setSize(container.clientWidth, 650);
+  window.addEventListener('resize', () => {
+    const c = document.getElementById("canvas-container");
+    if(!c) return;
+    camera.aspect = c.clientWidth / 650;
+    camera.updateProjectionMatrix();
+    renderer.setSize(c.clientWidth, 650);
+  });
 }
 
 function animate() {
@@ -234,8 +242,6 @@ function animate() {
 
 window.renderCAD = function(data) {
   if (!scene) init3D();
-  
-  // Clear group
   while(group.children.length > 0) {
     const obj = group.children[0];
     if (obj.geometry) obj.geometry.dispose();
@@ -244,11 +250,11 @@ window.renderCAD = function(data) {
   }
   
   try {
-    const cad = JSON.parse(data);
+    const cad = typeof data === 'string' ? JSON.parse(data) : data;
     
-    // Update UI Labels
-    document.getElementById("assembly-name-label").innerText = cad.assemblyName || "Unnamed Assembly";
+    document.getElementById("assembly-name-label").innerText = cad.assemblyName || "Unnamed";
     document.getElementById("val-project").innerText = cad.assemblyName || "-";
+    document.getElementById("val-version").innerText = cad.version || "1.0.0";
     document.getElementById("val-parts").innerText = cad.parts ? cad.parts.length : "0";
     
     if (cad.designStrategy) {
@@ -257,10 +263,9 @@ window.renderCAD = function(data) {
       document.getElementById("val-notes").innerText = cad.designStrategy.notes || "-";
     }
     
-    // Update Dimensions list
     const dimContent = document.getElementById("dimensions-content");
     dimContent.innerHTML = "";
-    if (cad.dimensions && Array.isArray(cad.dimensions)) {
+    if (cad.dimensions) {
       cad.dimensions.forEach(d => {
         const row = document.createElement("div");
         row.className = "prop-row";
@@ -269,11 +274,10 @@ window.renderCAD = function(data) {
       });
     }
 
-    // Render Parts
-    if (cad.parts && Array.isArray(cad.parts)) {
+    if (cad.parts) {
       cad.parts.forEach(p => {
         const d = p.geometry.dimensions;
-        const pos = p.geometry.position;
+        const pos = p.position; // Array [x,y,z]
         let geo;
         
         if (p.geometry.type === "cylinder") {
@@ -290,15 +294,22 @@ window.renderCAD = function(data) {
         });
         
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(
-          pos.x || 0,
-          (pos.y || 0) + (d.height || 50) / 2,
-          pos.z || 0
-        );
+        // Position is tuple [x,y,z]
+        mesh.position.set(pos[0], pos[1] + (d.height||50)/2, pos[2]);
+        
+        if (p.rotation) {
+          mesh.rotation.set(
+            p.rotation[0] * Math.PI / 180,
+            p.rotation[1] * Math.PI / 180,
+            p.rotation[2] * Math.PI / 180
+          );
+        }
+        
+        if (p.scale) mesh.scale.set(p.scale[0], p.scale[1], p.scale[2]);
+        
         group.add(mesh);
       });
       
-      // Auto-focus camera
       const box = new THREE.Box3().setFromObject(group);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
@@ -307,155 +318,123 @@ window.renderCAD = function(data) {
       camera.position.set(center.x + maxD * 2, center.y + maxD * 1.5, center.z + maxD * 2);
       camera.lookAt(center);
     }
-  } catch (e) {
-    console.error("Render error:", e);
-  }
+  } catch (e) { console.error("Render error:", e); }
 };
-
 setTimeout(init3D, 500);
 </script>
 """
 
 def clean_json(text):
-    # ลบ <think>...</think> ทั้งหมด
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    # ลบ markdown
     text = re.sub(r"```json|```", "", text)
-    
-    # พยายามหา JSON block ที่สมบูรณ์ที่สุด
-    # หา { ตัวแรก
     start_idx = text.find("{")
-    if start_idx == -1:
-        return ""
-    
-    # พยายามหา } ตัวสุดท้ายที่ทำให้ JSON valid
-    # หรือใช้ stack ในการหาคู่
+    if start_idx == -1: return ""
     stack = 0
     end_idx = -1
     for i in range(start_idx, len(text)):
-        if text[i] == "{":
-            stack += 1
+        if text[i] == "{": stack += 1
         elif text[i] == "}":
             stack -= 1
             if stack == 0:
                 end_idx = i
-                # หยุดที่ตัวแรกที่สมบูรณ์เพื่อกัน "Extra data"
                 break
-    
-    if end_idx != -1:
-        return text[start_idx:end_idx+1]
-    
-    # ถ้าหาคู่ไม่เจอ (truncated) ให้เอาตั้งแต่ { ถึงตัวสุดท้ายแล้วพยายามปิด
+    if end_idx != -1: return text[start_idx:end_idx+1]
     return text[start_idx:].strip()
 
-def generate_cad(prompt, history):
+def generate_cad(prompt, history=None):
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Generate CAD JSON for: {prompt}. Be detailed with design rationale."}
+        {"role": "user", "content": f"Generate CAD JSON for: {prompt}"}
     ]
-
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-
+    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=2048, # เพิ่มขึ้นนิดหน่อยเพื่อรองรับ text อธิบาย
+            max_new_tokens=2048,
             temperature=0.1,
             do_sample=True,
             top_p=0.9,
-            repetition_penalty=1.05,
             pad_token_id=tokenizer.eos_token_id,
         )
 
-    raw = tokenizer.decode(
-        outputs[0][len(inputs["input_ids"][0]):],
-        skip_special_tokens=True
-    )
-    print("RAW OUTPUT:\n", raw[:1000])
-
+    raw = tokenizer.decode(outputs[0][len(inputs["input_ids"][0]):], skip_special_tokens=True)
     clean = clean_json(raw)
-    print("CLEAN JSON:\n", clean[:400])
 
     try:
         parsed = json.loads(clean)
-        name = parsed.get("assemblyName", "Assembly")
-        count = len(parsed.get("parts", []))
-        status = f"✅ {name} — {count} parts generated"
+        # Ensure metadata exists for Zod
+        if "metadata" not in parsed:
+            parsed["metadata"] = {
+                "generatedAt": "2026-05-10T00:00:00Z",
+                "promptSummary": prompt[:100]
+            }
+        if "version" not in parsed: parsed["version"] = "1.0.0"
+        
         final_json = json.dumps(parsed, indent=2)
+        status = f"✅ {parsed.get('assemblyName', 'Assembly')} generated"
     except Exception as e:
-        print("PARSE ERROR:", e)
-        # Fallback: พยายามปิด JSON ที่ถูกตัด
+        # Simple repair
         try:
-            # เพิ่ม } จนกว่าจะ parse ได้ หรือครบ 10 ตัว
-            temp_json = clean
-            for _ in range(10):
+            temp = clean
+            for _ in range(5):
                 try:
-                    parsed = json.loads(temp_json)
+                    parsed = json.loads(temp)
                     final_json = json.dumps(parsed, indent=2)
-                    status = f"⚠️ Recovered: {parsed.get('assemblyName','Assembly')}"
+                    status = "⚠️ Recovered"
                     break
-                except:
-                    # ถ้ายังไม่ได้ ให้ลองเติม } หรือลบตัวอักษรสุดท้ายที่อาจจะค้างอยู่
-                    if temp_json.endswith(","): temp_json = temp_json[:-1]
-                    temp_json += "}"
-            else:
-                raise Exception("Failed to repair")
-        except Exception:
-            status = f"❌ Parsing Error: {str(e)[:50]}... Check RAW output."
+                except: temp += "}"
+            else: raise Exception()
+        except:
+            status = f"❌ Error: {str(e)[:50]}"
             final_json = "{}"
 
-    new_history = list(history) + [
-        {"role": "user", "content": prompt},
-        {"role": "assistant", "content": status},
-    ]
-    return new_history, "", final_json
+    if history is not None:
+        new_history = list(history) + [{"role": "user", "content": prompt}, {"role": "assistant", "content": status}]
+        return new_history, "", final_json
+    return final_json
 
+# --- API ENDPOINT FOR NEXTJS ---
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
-with gr.Blocks(title="VOXEN CAD Agent", css=".gradio-container { background: #050505; color: #eee; } button.primary { background: #FF6B00 !important; border: none !important; }") as demo:
+with gr.Blocks(title="VOXEN CAD Agent", css=".gradio-container { background: #050505; color: #eee; }") as demo:
     gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Qwen3-8B · AMD MI300X**")
-
     with gr.Row():
         with gr.Column(scale=4):
             chatbot = gr.Chatbot(height=400, label="Chat", type="messages")
-            msg = gr.Textbox(
-                placeholder="e.g. industrial coffee table with steel legs",
-                label="Prompt",
-                lines=2,
-            )
-            with gr.Row():
-                btn = gr.Button("⚙️ Generate CAD", variant="primary")
-                clear = gr.Button("🗑 Clear")
+            msg = gr.Textbox(placeholder="e.g. industrial gearbox", label="Prompt", lines=2)
+            btn = gr.Button("⚙️ Generate CAD", variant="primary")
             json_out = gr.Code(language="json", label="Assembly JSON", lines=10)
-
         with gr.Column(scale=9):
             gr.HTML(THREE_JS_VIEWER)
 
     state = gr.State([])
-
-    btn.click(
-        generate_cad, [msg, state], [state, msg, json_out]
-    ).then(
+    btn.click(generate_cad, [msg, state], [state, msg, json_out]).then(
         lambda s: s, state, chatbot
-    ).then(
-        None, [json_out], None,
-        js="(j) => { if(j && j!='{}') window.renderCAD(j); }"
+    ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
+
+    # Mount API Route
+    from fastapi.middleware.cors import CORSMiddleware
+    app = demo.app
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
+    
+    @app.post("/generate")
+    async def api_generate(request: Request):
+        data = await request.json()
+        prompt = data.get("prompt", "")
+        if not prompt: return JSONResponse({"error": "Prompt required"}, status_code=400)
+        
+        # Call the same generation logic
+        result_json = generate_cad(prompt)
+        return JSONResponse(json.loads(result_json))
 
-    msg.submit(
-        generate_cad, [msg, state], [state, msg, json_out]
-    ).then(
-        lambda s: s, state, chatbot
-    ).then(
-        None, [json_out], None,
-        js="(j) => { if(j && j!='{}') window.renderCAD(j); }"
-    )
-
-    clear.click(lambda: ([], [], "{}"), outputs=[chatbot, state, json_out])
-
-demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
+if __name__ == "__main__":
+    demo.launch(server_name="0.0.0.0", server_port=7860)
