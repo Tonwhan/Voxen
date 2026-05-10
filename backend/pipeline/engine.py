@@ -42,6 +42,18 @@ class CADPipeline:
                     child["primitive"] = child.get("shape") or child.get("geometry", {}).get("type") or "box"
                 if "role" not in child:
                     child["role"] = child.get("name", "unknown_part")
+
+                # Normalize materials (Hallucination Repair)
+                mat = str(child.get("material", "")).lower()
+                material_map = {
+                    "aluminum": "metal", "steel": "metal", "iron": "metal", "chrome": "metal", "brass": "metal",
+                    "oak": "wood", "pine": "wood", "mahogany": "wood",
+                    "abs": "plastic", "pvc": "plastic", "acrylic": "plastic"
+                }
+                if mat in material_map:
+                    child["material"] = material_map[mat]
+                elif mat not in ["wood", "metal", "plastic", "glass", "fabric", "rubber", "custom"]:
+                    child["material"] = "custom"
         
         return plan_json
 

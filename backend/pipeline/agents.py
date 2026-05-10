@@ -64,15 +64,16 @@ class CADAgents:
     def parse_intent(self, prompt):
         system_prompt = """You are a Semantic Intent Parser for CAD.
 Extract the core object, style, material, and key parts from the user prompt.
+Include industrial tools, furniture, vehicles, and architectural components.
 If the prompt is NOT a request to generate or describe a physical object or CAD model, return an empty JSON object {}.
 Output ONLY valid JSON. No markdown.
 
-Example output for "modern wooden chair with 4 legs":
+Example output for "industrial metal hammer":
 {
-  "object": "chair",
-  "style": "modern",
-  "material": "wood",
-  "parts": ["seat", "backrest", "legs"]
+  "object": "hammer",
+  "style": "industrial",
+  "material": "metal",
+  "parts": ["handle", "head", "claw"]
 }"""
         try:
             text = _generate_raw(system_prompt, prompt)

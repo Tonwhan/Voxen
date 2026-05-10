@@ -79,7 +79,14 @@ class SymbolicCompiler:
         
         if node.anchors:
             for anchor_point, target in node.anchors.items():
-                target_node, target_point = target.split('.') if '.' in target else (target, 'center')
+                # LLM sometimes hallucinations root.part.bottom (3 segments)
+                parts = target.split('.')
+                if len(parts) >= 2:
+                    target_node = parts[-2]
+                    target_point = parts[-1]
+                else:
+                    target_node = target
+                    target_point = 'center'
                 # If target is parent, and we want our top to snap to parent bottom:
                 if target_node == "parent" and anchor_point == "top" and target_point == "bottom":
                     # Shift down by half our height, plus whatever the parent offset was
