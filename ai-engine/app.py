@@ -5,8 +5,14 @@ import json
 import re
 import html
 
-BASE_MODEL_PATH = "./models/qwen3-8b"
-FINETUNED_PATH = "./models/voxen-cad-finetuned"
+import os
+
+if os.path.exists("./models/qwen3-8b"):
+    BASE_MODEL_PATH = "./models/qwen3-8b"
+else:
+    BASE_MODEL_PATH = "Qwen/Qwen2.5-7B-Instruct"
+
+FINETUNED_PATH = "./models/qwen3-8b-voxen"
 
 SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON according to the schema. No thinking, no explanation.
 
