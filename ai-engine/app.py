@@ -72,7 +72,7 @@ def generate_iframe_html(json_str):
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
         <style>
             body {{ margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: #333; }}
             #container {{ display: grid; grid-template-columns: 1fr 300px; height: 100vh; background: #ffffff; }}
@@ -80,17 +80,38 @@ def generate_iframe_html(json_str):
             canvas {{ display: block; outline: none; }}
             #sidebar {{ background: #fafafa; display: flex; flex-direction: column; overflow-y: auto; font-size: 11px; }}
             .section-header {{ background: #FF6B00; padding: 12px; color: #ffffff; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }}
+            .sub-header {{ padding: 10px 12px; color: #FF6B00; font-weight: 800; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #eee; background: #fff3e0; }}
             .prop-row {{ display: flex; border-bottom: 1px solid #eee; }}
-            .prop-label {{ width: 40%; padding: 10px 12px; color: #999; border-right: 1px solid #eee; text-transform: uppercase; font-size: 9px; font-weight: 700; }}
-            .prop-value {{ width: 60%; padding: 10px 12px; color: #333; font-weight: 600; }}
+            .prop-label {{ width: 50%; padding: 10px 12px; color: #888; border-right: 1px solid #eee; text-transform: uppercase; font-size: 9px; font-weight: 700; }}
+            .prop-value {{ width: 50%; padding: 10px 12px; color: #111; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 10px; }}
             .strategy-block {{ padding: 15px; border-bottom: 1px solid #eee; }}
             .strategy-title {{ color: #FF6B00; font-size: 10px; font-weight: 800; margin-bottom: 6px; text-transform: uppercase; }}
             .strategy-text {{ color: #555; line-height: 1.6; }}
             .badge-main {{ position: absolute; top: 20px; left: 20px; background: #FF6B00; color: white; padding: 5px 12px; border-radius: 6px; font-weight: 900; z-index: 100; font-size: 12px; box-shadow: 0 4px 10px rgba(255,107,0,0.3); }}
             #model-title {{ position: absolute; top: 60px; left: 20px; color: #333; font-weight: 900; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; text-shadow: 2px 2px 0px rgba(255,255,255,0.8); z-index: 100; pointer-events: none; }}
+            .controls-hint {{ position: absolute; bottom: 20px; left: 20px; color: #888; font-size: 10px; font-weight: 700; text-transform: uppercase; pointer-events: none; z-index: 100; }}
             .export-bar {{ position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 100; }}
             .btn-exp {{ background: #222; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; transition: 0.2s; text-transform: uppercase; }}
             .btn-exp:hover {{ background: #FF6B00; transform: translateY(-2px); }}
+            
+            .measurement-label {{
+                position: absolute;
+                top: 0; left: 0;
+                background: #ffffff;
+                border: 1px solid #FF6B00;
+                color: #FF6B00;
+                padding: 4px 8px;
+                font-size: 10px;
+                font-family: 'JetBrains Mono', monospace;
+                font-weight: 800;
+                pointer-events: none;
+                z-index: 50;
+                border-radius: 4px;
+                box-shadow: 0 2px 10px rgba(255,107,0,0.15);
+                transform: translate(-50%, -50%);
+                opacity: 0;
+                transition: opacity 0.3s;
+            }}
         </style>
     </head>
     <body>
@@ -98,24 +119,37 @@ def generate_iframe_html(json_str):
             <div id="canvas-area">
                 <div class="badge-main">VOXEN AI ENGINE</div>
                 <div id="model-title">READY TO GEN</div>
+                <div class="controls-hint">
+                    🖱️ MID: Rotate &nbsp;|&nbsp; 🖱️ RIGHT: Pan &nbsp;|&nbsp; 🖱️ LEFT: Focus
+                </div>
                 <div class="export-bar">
                     <button class="btn-exp" onclick="runExport('OBJ')">OBJ</button>
                     <button class="btn-exp" onclick="runExport('STL')">STL</button>
                 </div>
             </div>
             <div id="sidebar">
-                <div class="section-header">Assembly Information</div>
+                <div class="section-header">Project Overview</div>
+                <div class="sub-header">Assembly Overview</div>
                 <div class="prop-row"><div class="prop-label">Project</div><div class="prop-value" id="s-project">-</div></div>
                 <div class="prop-row"><div class="prop-label">Version</div><div class="prop-value" id="s-version">-</div></div>
                 <div class="prop-row"><div class="prop-label">Parts Count</div><div class="prop-value" id="s-parts">-</div></div>
-                <div class="section-header">AI Strategy</div>
-                <div class="strategy-block"><div class="strategy-title">Rationale</div><div id="s-rationale" class="strategy-text">-</div></div>
-                <div class="strategy-block"><div class="strategy-title">Manufacturing</div><div id="s-process" class="strategy-text">-</div></div>
+                
+                <div class="sub-header">Dimensions</div>
+                <div id="dimensions-container">
+                    <div class="prop-row"><div class="prop-label">No specs</div><div class="prop-value">-</div></div>
+                </div>
+
+                <div class="section-header">AI Design Strategy</div>
+                <div class="strategy-block"><div class="strategy-title">Design Rationale</div><div id="s-rationale" class="strategy-text">-</div></div>
+                <div class="strategy-block"><div class="strategy-title">Manufacturing Process</div><div id="s-process" class="strategy-text">-</div></div>
             </div>
         </div>
 
         <script>
             let scene, camera, renderer, controls, group;
+            const labels = [];
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
 
             function init() {{
                 const container = document.getElementById("canvas-area");
@@ -133,6 +167,13 @@ def generate_iframe_html(json_str):
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
                 
+                // Set Custom Controls
+                controls.mouseButtons = {{
+                    LEFT: THREE.MOUSE.NONE,   // Reserved for click-to-focus
+                    MIDDLE: THREE.MOUSE.ROTATE,
+                    RIGHT: THREE.MOUSE.PAN
+                }};
+                
                 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
                 const sun = new THREE.DirectionalLight(0xffffff, 0.6);
                 sun.position.set(1000, 2000, 1000);
@@ -143,10 +184,28 @@ def generate_iframe_html(json_str):
                 group = new THREE.Group();
                 scene.add(group);
                 
+                // Click to Focus logic
+                container.addEventListener('mousedown', (event) => {{
+                    if (event.button !== 0) return; // Only Left Click
+                    const rect = renderer.domElement.getBoundingClientRect();
+                    mouse.x = ( ( event.clientX - rect.left ) / rect.width ) * 2 - 1;
+                    mouse.y = - ( ( event.clientY - rect.top ) / rect.height ) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera);
+                    
+                    const intersects = raycaster.intersectObjects(group.children);
+                    if (intersects.length > 0) {{
+                        const object = intersects[0].object;
+                        const box = new THREE.Box3().setFromObject(object);
+                        const center = box.getCenter(new THREE.Vector3());
+                        controls.target.copy(center);
+                    }}
+                }});
+
                 function animate() {{
                     requestAnimationFrame(animate);
                     controls.update();
                     renderer.render(scene, camera);
+                    updateLabels();
                 }}
                 animate();
 
@@ -155,6 +214,39 @@ def generate_iframe_html(json_str):
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
                 }});
+            }}
+
+            function updateLabels() {{
+                const container = document.getElementById("canvas-area");
+                labels.forEach(l => {{
+                    const vector = l.pos.clone();
+                    vector.project(camera);
+                    
+                    // Check if object is behind camera
+                    if (vector.z > 1) {{
+                        l.element.style.opacity = '0';
+                        return;
+                    }}
+                    
+                    const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
+                    const y = (vector.y * -0.5 + 0.5) * container.clientHeight;
+                    
+                    l.element.style.transform = `translate(-50%, -50%) translate(${{x}}px, ${{y}}px)`;
+                    l.element.style.opacity = '1';
+                }});
+            }}
+
+            function createLabel(text, position) {{
+                const div = document.createElement('div');
+                div.className = 'measurement-label';
+                div.innerText = text;
+                document.getElementById('canvas-area').appendChild(div);
+                labels.push({{ element: div, pos: position }});
+            }}
+
+            function clearLabels() {{
+                labels.forEach(l => l.element.remove());
+                labels.length = 0;
             }}
 
             function createGear(params) {{
@@ -193,6 +285,8 @@ def generate_iframe_html(json_str):
                 if (!cadStr || cadStr === '{{}}') return;
                 try {{
                     const cad = JSON.parse(cadStr);
+                    clearLabels();
+                    
                     document.getElementById("model-title").innerText = cad.assemblyName || "GENERATED";
                     document.getElementById("s-project").innerText = cad.assemblyName || "-";
                     document.getElementById("s-version").innerText = cad.version || "1.0.0";
@@ -203,15 +297,48 @@ def generate_iframe_html(json_str):
                         document.getElementById("s-process").innerText = cad.designStrategy.process || "-";
                     }}
 
+                    // Fill Dimensions Panel
+                    const dimContainer = document.getElementById("dimensions-container");
+                    dimContainer.innerHTML = "";
+                    let isGear = false;
+                    let gearSpecs = null;
+
                     if(cad.parts) {{
                         cad.parts.forEach(p => {{
                             const d = p.geometry.dimensions;
                             let geo;
-                            if(p.shape === 'gear' || p.geometry.type === 'gear') geo = createGear(d);
-                            else if(p.shape === 'cylinder' || p.geometry.type === 'cylinder') geo = new THREE.CylinderGeometry(d.width/2, d.width/2, d.height, 32);
-                            else geo = new THREE.BoxGeometry(d.width||50, d.height||50, d.depth||50);
                             
-                            const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({{ color: p.color || 0xFF6B00, metalness: 0.2, roughness: 0.7 }}));
+                            if(p.shape === 'gear' || p.geometry.type === 'gear') {{
+                                isGear = true;
+                                gearSpecs = d;
+                                geo = createGear(d);
+                                
+                                // Create floating labels
+                                const pr = ((d.module || 3) * (d.teeth || 24)) / 2;
+                                createLabel(`+ MOD: ${{d.module || 3}}`, new THREE.Vector3(0, (d.height||15)/2 + 10, -pr));
+                                createLabel(`+ PCD: ${{pr*2}}MM`, new THREE.Vector3(-pr - 10, 0, 0));
+                                createLabel(`+ THICK: ${{d.height||15}}MM`, new THREE.Vector3(0, -(d.height||15)/2 - 10, 0));
+                                createLabel(`+ PA: 20°`, new THREE.Vector3(pr + 10, 0, 0));
+
+                                // Add to sidebar
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Pitch Circle Dia.</div><div class="prop-value">${{pr*2}} mm</div></div>`;
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Module (Size)</div><div class="prop-value">${{d.module || 3}} mm</div></div>`;
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Teeth Count</div><div class="prop-value">${{d.teeth || 24}}</div></div>`;
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Pressure Angle</div><div class="prop-value">20°</div></div>`;
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Thickness</div><div class="prop-value">${{d.height || 15}} mm</div></div>`;
+
+                            }}
+                            else if(p.shape === 'cylinder' || p.geometry.type === 'cylinder') {{
+                                geo = new THREE.CylinderGeometry(d.width/2, d.width/2, d.height, 32);
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Diameter</div><div class="prop-value">${{d.width}} mm</div></div>`;
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Height</div><div class="prop-value">${{d.height}} mm</div></div>`;
+                            }}
+                            else {{
+                                geo = new THREE.BoxGeometry(d.width||50, d.height||50, d.depth||50);
+                                dimContainer.innerHTML += `<div class="prop-row"><div class="prop-label">Size (W x H x D)</div><div class="prop-value">${{d.width||50}} x ${{d.height||50}} x ${{d.depth||50}} mm</div></div>`;
+                            }}
+                            
+                            const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({{ color: p.color || 0x222222, metalness: 0.8, roughness: 0.3 }}));
                             mesh.position.set(p.position[0], p.position[1] + (d.height||50)/2, p.position[2]);
                             if(p.rotation) mesh.rotation.set(p.rotation[0]*Math.PI/180, p.rotation[1]*Math.PI/180, p.rotation[2]*Math.PI/180);
                             group.add(mesh);
