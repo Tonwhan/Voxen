@@ -5,7 +5,8 @@ import json
 import re
 import html
 
-MODEL_PATH = "./models/qwen3-8b"
+BASE_MODEL_PATH = "./models/qwen3-8b"
+FINETUNED_PATH = "./models/voxen-cad-finetuned"
 
 SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON according to the schema. No thinking, no explanation.
 
@@ -51,13 +52,27 @@ Expected JSON structure:
 }"""
 
 print("Loading model...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_PATH,
-    torch_dtype=torch.bfloat16,
-    device_map="auto",
-    trust_remote_code=True,
-)
+import os
+if os.path.exists(FINETUNED_PATH):
+    print("🧠 Loading Fine-tuned LoRA Adapter from:", FINETUNED_PATH)
+    tokenizer = AutoTokenizer.from_pretrained(FINETUNED_PATH, trust_remote_code=True)
+    base_model = AutoModelForCausalLM.from_pretrained(
+        BASE_MODEL_PATH,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    from peft import PeftModel
+    model = PeftModel.from_pretrained(base_model, FINETUNED_PATH)
+else:
+    print("Loading base model...")
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_PATH, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        BASE_MODEL_PATH,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
 print(f"✅ Ready on {next(model.parameters()).device}")
 
 def generate_iframe_html(json_str):
