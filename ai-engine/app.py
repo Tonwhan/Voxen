@@ -61,6 +61,7 @@ model = AutoModelForCausalLM.from_pretrained(
 print(f"✅ Ready on {next(model.parameters()).device}")
 
 THREE_JS_VIEWER = """
+<div id="voxen-root" style="width: 100%; height: 650px; min-height: 650px;">
 <style>
   #viewer-container {
     display: grid;
@@ -69,14 +70,15 @@ THREE_JS_VIEWER = """
     background: #ffffff;
     border-radius: 12px;
     overflow: hidden;
-    border: 2px solid #FF6B00;
+    border: 3px solid #FF6B00;
     font-family: 'Inter', sans-serif;
     color: #333;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
   }
   #canvas-container {
     position: relative;
     background: #fdfdfd;
+    min-width: 100px;
   }
   #sidebar {
     background: #fafafa;
@@ -88,15 +90,12 @@ THREE_JS_VIEWER = """
   }
   .section-header {
     background: #FF6B00;
-    padding: 10px 12px;
+    padding: 12px;
     color: #ffffff;
-    font-weight: bold;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
-    font-size: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 11px;
   }
   .prop-row {
     display: flex;
@@ -104,356 +103,242 @@ THREE_JS_VIEWER = """
   }
   .prop-label {
     width: 40%;
-    padding: 8px 12px;
-    color: #888;
+    padding: 10px 12px;
+    color: #999;
     border-right: 1px solid #eee;
     text-transform: uppercase;
     font-size: 9px;
-    font-weight: 600;
+    font-weight: 700;
   }
   .prop-value {
     width: 60%;
-    padding: 8px 12px;
+    padding: 10px 12px;
     color: #333;
-    font-weight: 500;
+    font-weight: 600;
   }
   .strategy-block {
-    padding: 12px;
+    padding: 15px;
     border-bottom: 1px solid #eee;
   }
   .strategy-title {
     color: #FF6B00;
-    font-size: 9px;
-    font-weight: bold;
-    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    margin-bottom: 6px;
     text-transform: uppercase;
   }
   .strategy-text {
-    color: #666;
-    line-height: 1.5;
-    font-family: 'Inter', sans-serif;
+    color: #555;
+    line-height: 1.6;
   }
-  #viewer-overlay {
+  .badge-main {
     position: absolute;
-    top: 15px;
-    left: 15px;
-    pointer-events: none;
-    z-index: 10;
-  }
-  .badge {
+    top: 20px;
+    left: 20px;
     background: #FF6B00;
     color: white;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-weight: 900;
+    font-size: 12px;
+    z-index: 100;
+    box-shadow: 0 4px 10px rgba(255,107,0,0.3);
   }
-  .export-panel {
+  .export-bar {
     position: absolute;
-    bottom: 15px;
-    right: 15px;
+    bottom: 20px;
+    right: 20px;
     display: flex;
-    gap: 8px;
+    gap: 10px;
     z-index: 100;
   }
-  .export-btn {
-    background: #333;
+  .btn-exp {
+    background: #222;
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 10px;
+    padding: 8px 16px;
+    border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
+    font-size: 11px;
+    transition: 0.2s;
   }
-  .export-btn:hover {
-    background: #FF6B00;
-  }
+  .btn-exp:hover { background: #FF6B00; transform: translateY(-2px); }
 </style>
 
 <div id="viewer-container">
   <div id="canvas-container">
-    <div id="viewer-overlay">
-      <div class="badge">VOXEN AI ENGINE</div>
-      <div id="assembly-name-label" style="margin-top: 10px; color: #333; font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;"></div>
-    </div>
+    <div class="badge-main">VOXEN AI CAD ENGINE</div>
+    <div id="model-title" style="position: absolute; top: 60px; left: 20px; color: #333; font-weight: 900; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; text-shadow: 2px 2px 0px rgba(255,255,255,0.8);">READY TO GEN</div>
     
-    <div class="export-panel">
-      <button class="export-btn" onclick="exportFile('OBJ')">OBJ</button>
-      <button class="export-btn" onclick="exportFile('STL')">STL</button>
-      <button class="export-btn" onclick="exportFile('STEP')" style="opacity: 0.5;">STEP</button>
+    <div class="export-bar">
+      <button class="btn-exp" onclick="window.runExport('OBJ')">OBJ</button>
+      <button class="btn-exp" onclick="window.runExport('STL')">STL</button>
+      <button class="btn-exp" onclick="window.runExport('STEP')">STEP</button>
     </div>
   </div>
   <div id="sidebar">
-    <div class="section-header">Project Overview</div>
-    <div id="overview-content">
-       <div class="prop-row"><div class="prop-label">Project</div><div class="prop-value" id="val-project">-</div></div>
-       <div class="prop-row"><div class="prop-label">Version</div><div class="prop-value" id="val-version">-</div></div>
-       <div class="prop-row"><div class="prop-label">Parts</div><div class="prop-value" id="val-parts">-</div></div>
-    </div>
+    <div class="section-header">Assembly Information</div>
+    <div class="prop-row"><div class="prop-label">Project</div><div class="prop-value" id="s-project">-</div></div>
+    <div class="prop-row"><div class="prop-label">Version</div><div class="prop-value" id="s-version">-</div></div>
+    <div class="prop-row"><div class="prop-label">Parts Count</div><div class="prop-value" id="s-parts">-</div></div>
     
-    <div class="section-header">Technical Specs</div>
-    <div id="dimensions-content"></div>
-    
-    <div class="section-header">AI Design Strategy</div>
+    <div class="section-header">Design Strategy</div>
     <div class="strategy-block">
-      <div class="strategy-title">Design Rationale</div>
-      <div class="strategy-text" id="val-rationale">Processing...</div>
+      <div class="strategy-title">AI Rationale</div>
+      <div id="s-rationale" class="strategy-text">Wait for input...</div>
     </div>
     <div class="strategy-block">
       <div class="strategy-title">Manufacturing</div>
-      <div class="strategy-text" id="val-process">-</div>
+      <div id="s-process" class="strategy-text">-</div>
     </div>
     <div class="strategy-block">
       <div class="strategy-title">Assembly Notes</div>
-      <div class="strategy-text" id="val-notes">-</div>
+      <div id="s-notes" class="strategy-text">-</div>
     </div>
   </div>
 </div>
+</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+<script src="https://unpkg.com/three@0.150.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js" type="module"></script>
+<script src="https://unpkg.com/three@0.150.0/examples/jsm/exporters/OBJExporter.js" type="module"></script>
+<script src="https://unpkg.com/three@0.150.0/examples/jsm/exporters/STLExporter.js" type="module"></script>
 
-<script>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.150.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.150.0/examples/jsm/controls/OrbitControls.js';
+import { OBJExporter } from 'https://unpkg.com/three@0.150.0/examples/jsm/exporters/OBJExporter.js';
+import { STLExporter } from 'https://unpkg.com/three@0.150.0/examples/jsm/exporters/STLExporter.js';
+
 let scene, camera, renderer, controls, group;
 
-function init3D() {
+function init() {
   const container = document.getElementById("canvas-container");
   if (!container || scene) return;
-  
-  if (container.clientWidth === 0) {
-    setTimeout(init3D, 200);
-    return;
-  }
+  if (container.clientWidth === 0) { setTimeout(init, 200); return; }
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xfdfdfd);
   
-  const width = container.clientWidth;
-  const height = 650;
-  
-  camera = new THREE.PerspectiveCamera(45, width / height, 1, 100000);
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / 650, 1, 100000);
   camera.position.set(2000, 1500, 2000);
   
   renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(width, height);
+  renderer.setSize(container.clientWidth, 650);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
   
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-  scene.add(ambientLight);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+  sun.position.set(1000, 2000, 1000);
+  scene.add(sun);
   
-  const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  sunLight.position.set(1000, 1000, 1000);
-  scene.add(sunLight);
-
-  const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
-  backLight.position.set(-1000, 500, -1000);
-  scene.add(backLight);
-  
-  const grid = new THREE.GridHelper(10000, 100, 0xeeeeee, 0xdddddd);
-  scene.add(grid);
+  scene.add(new THREE.GridHelper(10000, 100, 0xeeeeee, 0xdddddd));
   
   group = new THREE.Group();
   scene.add(group);
   
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
   animate();
+  console.log("VOXEN ENGINE ONLINE");
 }
 
-function createGearGeometry(params) {
-  const numTeeth = params.teeth || 24;
-  const module = params.module || 3;
-  const faceWidth = params.height || 15;
-  const boreRadius = (params.bore || 20) / 2;
-
-  const pitchRadius = (module * numTeeth) / 2;
-  const outerRadius = pitchRadius + module;
-  const rootRadius = pitchRadius - 1.25 * module;
-
+function createGear(params) {
+  const { teeth=24, module=3, height=15, bore=20 } = params;
+  const pr = (module * teeth) / 2;
+  const or = pr + module;
+  const rr = pr - 1.25 * module;
   const shape = new THREE.Shape();
-  const angleStep = (2 * Math.PI) / numTeeth;
-
-  for (let i = 0; i < numTeeth; i++) {
-    const angle = i * angleStep;
-    const nextAngle = (i + 1) * angleStep;
-    const toothHalfAngle = (Math.PI / numTeeth) * 0.4;
-    const rootAngle1 = angle - toothHalfAngle * 1.2;
-    const rootAngle2 = angle + toothHalfAngle * 1.2;
-
-    if (i === 0) shape.moveTo(rootRadius * Math.cos(rootAngle1), rootRadius * Math.sin(rootAngle1));
-    
-    shape.lineTo(rootRadius * Math.cos(rootAngle1), rootRadius * Math.sin(rootAngle1));
-    shape.lineTo(pitchRadius * Math.cos(angle - toothHalfAngle), pitchRadius * Math.sin(angle - toothHalfAngle));
-    shape.lineTo(outerRadius * Math.cos(angle), outerRadius * Math.sin(angle));
-    shape.lineTo(pitchRadius * Math.cos(angle + toothHalfAngle), pitchRadius * Math.sin(angle + toothHalfAngle));
-    shape.lineTo(rootRadius * Math.cos(rootAngle2), rootRadius * Math.sin(rootAngle2));
-
-    const gapAngle1 = rootAngle2;
-    const gapAngle2 = nextAngle - toothHalfAngle * 1.2;
-    const steps = 5;
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      const gapAngle = gapAngle1 + (gapAngle2 - gapAngle1) * t;
-      shape.lineTo(rootRadius * Math.cos(gapAngle), rootRadius * Math.sin(gapAngle));
-    }
+  const step = (Math.PI * 2) / teeth;
+  for(let i=0; i<teeth; i++) {
+    const a = i * step;
+    const ha = (Math.PI / teeth) * 0.4;
+    if(i===0) shape.moveTo(rr * Math.cos(a-ha*1.2), rr * Math.sin(a-ha*1.2));
+    shape.lineTo(rr * Math.cos(a-ha*1.2), rr * Math.sin(a-ha*1.2));
+    shape.lineTo(pr * Math.cos(a-ha), pr * Math.sin(a-ha));
+    shape.lineTo(or * Math.cos(a), or * Math.sin(a));
+    shape.lineTo(pr * Math.cos(a+ha), pr * Math.sin(a+ha));
+    shape.lineTo(rr * Math.cos(a+ha*1.2), rr * Math.sin(a+ha*1.2));
   }
   shape.closePath();
-
-  const borePath = new THREE.Path();
-  borePath.absarc(0, 0, boreRadius, 0, Math.PI * 2, false);
-  shape.holes.push(borePath);
-
-  const extrudeSettings = {
-    depth: faceWidth,
-    bevelEnabled: true,
-    bevelThickness: 0.3,
-    bevelSize: 0.3,
-    bevelSegments: 2,
-  };
-
-  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  geo.center();
-  geo.rotateX(Math.PI / 2);
+  const hole = new THREE.Path();
+  hole.absarc(0,0, bore/2, 0, Math.PI*2, true);
+  shape.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.5 });
+  geo.center(); geo.rotateX(Math.PI/2);
   return geo;
-}
-
-window.exportFile = function(type) {
-  if (!group || group.children.length === 0) return alert("No model to export");
-  
-  if (type === 'OBJ') {
-    const exporter = new THREE.OBJExporter();
-    const result = exporter.parse(group);
-    downloadBlob(result, 'assembly.obj', 'text/plain');
-  } else if (type === 'STL') {
-    const exporter = new THREE.STLExporter();
-    const result = exporter.parse(group, { binary: true });
-    downloadBlob(result, 'assembly.stl', 'application/octet-stream');
-  } else if (type === 'STEP') {
-    alert("STEP Export requires a CAD kernel (OpenCASCADE). Currently generating STL/OBJ for high-fidelity export.");
-  }
-};
-
-function downloadBlob(content, filename, contentType) {
-  const blob = new Blob([content], { type: contentType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-  if (controls) controls.update();
-  if (renderer) renderer.render(scene, camera);
 }
 
 window.renderCAD = function(data) {
   if (!data || data === '{}') return;
-  
-  if (!scene) {
-    init3D();
-    setTimeout(() => window.renderCAD(data), 300);
-    return;
-  }
-
-  while(group.children.length > 0) {
-    const obj = group.children[0];
-    if (obj.geometry) obj.geometry.dispose();
-    if (obj.material) obj.material.dispose();
-    group.remove(obj);
-  }
+  if (!scene) { init(); setTimeout(() => window.renderCAD(data), 500); return; }
   
   try {
     const cad = typeof data === 'string' ? JSON.parse(data) : data;
-    
-    document.getElementById("assembly-name-label").innerText = cad.assemblyName || "VOXEN PART";
-    document.getElementById("val-project").innerText = cad.assemblyName || "-";
-    document.getElementById("val-version").innerText = cad.version || "1.0.0";
-    document.getElementById("val-parts").innerText = cad.parts ? cad.parts.length : "0";
-    
-    if (cad.designStrategy) {
-      document.getElementById("val-rationale").innerText = cad.designStrategy.rationale || "-";
-      document.getElementById("val-process").innerText = cad.designStrategy.process || "-";
-      document.getElementById("val-notes").innerText = cad.designStrategy.notes || "-";
-    }
-    
-    const dimContent = document.getElementById("dimensions-content");
-    dimContent.innerHTML = "";
-    if (cad.dimensions) {
-      cad.dimensions.forEach(d => {
-        const row = document.createElement("div");
-        row.className = "prop-row";
-        row.innerHTML = `<div class="prop-label">${d.label}</div><div class="prop-value">${d.value}</div>`;
-        dimContent.appendChild(row);
-      });
+    while(group.children.length > 0) {
+      const o = group.children[0];
+      o.geometry.dispose(); o.material.dispose();
+      group.remove(o);
     }
 
-    if (cad.parts && cad.parts.length > 0) {
-      cad.parts.forEach(p => {
-        const d = p.geometry.dimensions;
-        const pos = p.position;
-        let geo;
-        
-        if (p.shape === "gear" || p.geometry.type === "gear") {
-          geo = createGearGeometry(d);
-        } else if (p.geometry.type === "cylinder") {
-          const r = (d.width || d.depth || 50) / 2;
-          geo = new THREE.CylinderGeometry(r, r, d.height || 50, 32);
-        } else {
-          geo = new THREE.BoxGeometry(d.width || 50, d.height || 50, d.depth || 50);
-        }
-        
-        const mat = new THREE.MeshStandardMaterial({
-          color: p.color || "#FF6B00",
-          metalness: 0.1,
-          roughness: 0.8
-        });
-        
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(pos[0], pos[1] + (d.height||50)/2, pos[2]);
-        
-        if (p.rotation) {
-          mesh.rotation.set(
-            p.rotation[0] * Math.PI / 180,
-            p.rotation[1] * Math.PI / 180,
-            p.rotation[2] * Math.PI / 180
-          );
-        }
-        group.add(mesh);
-      });
-      
-      const box = new THREE.Box3().setFromObject(group);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      controls.target.copy(center);
-      
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-      cameraZ *= 2.5; 
-      camera.position.set(center.x + cameraZ, center.y + cameraZ * 0.8, center.z + cameraZ);
-      camera.lookAt(center);
+    document.getElementById("model-title").innerText = cad.assemblyName || "GENERATED";
+    document.getElementById("s-project").innerText = cad.assemblyName || "-";
+    document.getElementById("s-version").innerText = cad.version || "1.0.0";
+    document.getElementById("s-parts").innerText = cad.parts ? cad.parts.length : "0";
+    if(cad.designStrategy) {
+      document.getElementById("s-rationale").innerText = cad.designStrategy.rationale || "-";
+      document.getElementById("s-process").innerText = cad.designStrategy.process || "-";
+      document.getElementById("s-notes").innerText = cad.designStrategy.notes || "-";
     }
-  } catch (e) { console.error("Render error:", e); }
+
+    cad.parts.forEach(p => {
+      const d = p.geometry.dimensions;
+      let geo;
+      if(p.shape === 'gear') geo = createGear(d);
+      else if(p.shape === 'cylinder') geo = new THREE.CylinderGeometry(d.width/2, d.width/2, d.height, 32);
+      else geo = new THREE.BoxGeometry(d.width||50, d.height||50, d.depth||50);
+      
+      const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: p.color || 0xFF6B00, metalness: 0.2, roughness: 0.7 }));
+      mesh.position.set(p.position[0], p.position[1] + (d.height||50)/2, p.position[2]);
+      if(p.rotation) mesh.rotation.set(p.rotation[0]*Math.PI/180, p.rotation[1]*Math.PI/180, p.rotation[2]*Math.PI/180);
+      group.add(mesh);
+    });
+
+    const box = new THREE.Box3().setFromObject(group);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    controls.target.copy(center);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const dist = maxDim * 2.5;
+    camera.position.set(center.x + dist, center.y + dist, center.z + dist);
+    camera.lookAt(center);
+  } catch(e) { console.error("CAD Render Error:", e); }
 };
 
-function startEngine() {
-  if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
-    init3D();
-  } else {
-    setTimeout(startEngine, 200);
-  }
-}
-startEngine();
+window.runExport = function(type) {
+  if(!group) return;
+  let res, name, mime;
+  if(type==='OBJ') { res = new OBJExporter().parse(group); name='model.obj'; mime='text/plain'; }
+  else if(type==='STL') { res = new STLExporter().parse(group, {binary:true}); name='model.stl'; mime='application/octet-stream'; }
+  else { alert("STEP Export requires backend processing."); return; }
+  const b = new Blob([res], {type:mime});
+  const u = URL.createObjectURL(b);
+  const l = document.createElement('a'); l.href=u; l.download=name; l.click();
+};
+
+// Auto-init
+setTimeout(init, 500);
+
+// For Gradio call
+window.top.renderCAD = window.renderCAD;
 </script>
 """
 
@@ -463,62 +348,28 @@ def clean_json(text):
     start_idx = text.find("{")
     if start_idx == -1: return ""
     stack = 0
-    end_idx = -1
     for i in range(start_idx, len(text)):
         if text[i] == "{": stack += 1
         elif text[i] == "}":
             stack -= 1
-            if stack == 0:
-                end_idx = i
-                break
-    if end_idx != -1: return text[start_idx:end_idx+1]
+            if stack == 0: return text[start_idx:i+1]
     return text[start_idx:].strip()
 
 def generate_cad(prompt, history=None):
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Generate CAD JSON for: {prompt}"}
-    ]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Generate CAD JSON for: {prompt}"}]
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
-
     with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=2048,
-            temperature=0.1,
-            do_sample=True,
-            top_p=0.9,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
+        outputs = model.generate(**inputs, max_new_tokens=2048, temperature=0.1, do_sample=True, top_p=0.9, pad_token_id=tokenizer.eos_token_id)
     raw = tokenizer.decode(outputs[0][len(inputs["input_ids"][0]):], skip_special_tokens=True)
     clean = clean_json(raw)
-
     try:
         parsed = json.loads(clean)
-        if "metadata" not in parsed:
-            parsed["metadata"] = {
-                "generatedAt": "2026-05-10T00:00:00Z",
-                "promptSummary": prompt[:100]
-            }
-        if "version" not in parsed: parsed["version"] = "1.0.0"
         final_json = json.dumps(parsed, indent=2)
         status = f"✅ {parsed.get('assemblyName', 'Assembly')} created"
-    except Exception as e:
-        try:
-            temp = clean
-            for _ in range(5):
-                try:
-                    parsed = json.loads(temp)
-                    final_json = json.dumps(parsed, indent=2)
-                    status = "⚠️ Recovered"
-                    break
-                except: temp += "}"
-            else: raise Exception()
-        except:
-            status = f"❌ Error: {str(e)[:50]}"
-            final_json = "{}"
+    except:
+        final_json = "{}"
+        status = "❌ Generation Error"
 
     if history is not None:
         new_history = list(history)
@@ -527,61 +378,42 @@ def generate_cad(prompt, history=None):
         return new_history, "", final_json
     return final_json
 
-# --- API ENDPOINT FOR NEXTJS ---
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
 with gr.Blocks(title="VOXEN CAD Agent") as demo:
-    gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Theme: White & Orange · AMD MI300X**")
+    gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Ready to generate Production-Grade Models**")
     with gr.Row():
         with gr.Column(scale=4):
-            chatbot = gr.Chatbot(height=400, label="Chat History") 
-            msg = gr.Textbox(placeholder="e.g. coffee table with 4 legs", label="AI Prompt", lines=2)
+            chatbot = gr.Chatbot(height=400, label="History") 
+            msg = gr.Textbox(placeholder="Ask AI to design something...", label="AI Prompt")
             btn = gr.Button("⚙️ Generate CAD Model", variant="primary")
-            json_out = gr.Code(language="json", label="Output JSON", lines=10)
+            json_out = gr.Code(language="json", label="JSON Output", lines=8)
         with gr.Column(scale=9):
             gr.HTML(THREE_JS_VIEWER)
 
     state = gr.State([])
     
+    # Logic: Generate -> Update State/Chat -> BIND JSON TO VIEWER
     btn.click(generate_cad, [msg, state], [state, msg, json_out]).then(
         lambda s: s, state, chatbot
-    ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
+    ).then(
+        None, [json_out], None, 
+        js="(j) => { try { if(window.renderCAD) window.renderCAD(j); else if(window.top.renderCAD) window.top.renderCAD(j); } catch(e) { console.error(e); } }"
+    )
 
     msg.submit(generate_cad, [msg, state], [state, msg, json_out]).then(
         lambda s: s, state, chatbot
-    ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
+    ).then(
+        None, [json_out], None, 
+        js="(j) => { try { if(window.renderCAD) window.renderCAD(j); else if(window.top.renderCAD) window.top.renderCAD(j); } catch(e) { console.error(e); } }"
+    )
 
-    # Mount API Route
+    # API
     from fastapi.middleware.cors import CORSMiddleware
     app = demo.app
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
     @app.post("/generate")
-    async def api_generate(request: Request):
+    async def api_gen(request: gr.Request):
         data = await request.json()
-        prompt = data.get("prompt", "")
-        if not prompt: return JSONResponse({"error": "Prompt required"}, status_code=400)
-        result_json = generate_cad(prompt)
-        return JSONResponse(json.loads(result_json))
+        return json.loads(generate_cad(data.get("prompt", "")))
 
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0", 
-        server_port=7860,
-        share=True,
-        css="""
-        .gradio-container { background-color: #ffffff !important; color: #333333 !important; }
-        button.primary { background: #FF6B00 !important; border: none !important; color: white !important; font-weight: bold !important; }
-        .block { border: 1px solid #eeeeee !important; }
-        #component-0 { background: white !important; }
-        .chatbot .message.user { background: #fdf2e9 !important; border: 1px solid #FF6B00 !important; }
-        .chatbot .message.bot { background: #ffffff !important; border: 1px solid #eeeeee !important; }
-        """
-    )
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=True, css=".gradio-container { background: white; } button.primary { background: #FF6B00 !important; }")
