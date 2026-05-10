@@ -61,6 +61,27 @@ Return ONLY the corrected, fully valid JSON matching the strict schema.
         {"role": "user", "content": repair_prompt}
     ], temperature=0.3) # lower temp for repair
 
+def migrate_to_v3(plan_json: dict) -> dict:
+    """Migrates legacy flat plans to the new Scene Graph root_node structure."""
+    if "root_node" not in plan_json and "parts" in plan_json:
+        parts = plan_json.pop("parts")
+        plan_json["root_node"] = {
+            "id": "root_node",
+            "role": "assembly",
+            "primitive": "assembly_root",
+            "size": "huge",
+            "material": "custom",
+            "children": parts
+        }
+        for child in plan_json["root_node"]["children"]:
+            if "primitive" not in child:
+                child["primitive"] = child.get("shape") or child.get("geometry", {}).get("type") or "box"
+            if "role" not in child:
+                child["role"] = child.get("name", "unknown_part")
+    if "dsl_version" not in plan_json:
+        plan_json["dsl_version"] = "0.1.0"
+    return plan_json
+
 def generate_sample(prompt_obj: dict) -> bool:
     user_prompt = prompt_obj["text"]
     metadata = prompt_obj["metadata"]
@@ -97,16 +118,21 @@ def generate_sample(prompt_obj: dict) -> bool:
     final_plan_str = plan_str
     
     try:
-        AssemblySchema(**json.loads(plan_str))
+        plan_json = json.loads(plan_str)
+        plan_json = migrate_to_v3(plan_json)
+        AssemblySchema(**plan_json)
         is_valid = True
+        final_plan_str = json.dumps(plan_json)
     except ValidationError as e:
         # Pass to Repair Agent
         repaired_str = repair_plan(teacher_prompt, plan_str, str(e))
         if repaired_str:
             try:
-                AssemblySchema(**json.loads(repaired_str))
+                rep_json = json.loads(repaired_str)
+                rep_json = migrate_to_v3(rep_json)
+                AssemblySchema(**rep_json)
                 is_valid = True
-                final_plan_str = repaired_str
+                final_plan_str = json.dumps(rep_json)
                 logger.info("Repair successful!")
             except ValidationError as re:
                 logger.warning("Repair failed.")

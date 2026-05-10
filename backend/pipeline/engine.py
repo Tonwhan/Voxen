@@ -17,7 +17,32 @@ class CADPipeline:
         self.exporter = CADExporter(export_dir)
 
     def _clean_plan_json(self, plan_json):
-        # We no longer aggressively force 'box' on symbolic types like 'assembly_root'
+        """
+        Migrates legacy V1/V2 flat plans to the new V3 Scene Graph structure.
+        Ensures the system remains functional even if the LLM outputs an older format.
+        """
+        # If root_node is missing but parts list exists, migrate it
+        if "root_node" not in plan_json and "parts" in plan_json:
+            logger.info("CADPipeline: Migrating legacy flat parts list to root_node hierarchy.")
+            parts = plan_json.pop("parts")
+            
+            # Create a synthetic assembly_root to wrap the flat parts
+            plan_json["root_node"] = {
+                "id": "legacy_root",
+                "role": "assembly",
+                "primitive": "assembly_root",
+                "size": "huge",
+                "material": "custom",
+                "children": parts
+            }
+            
+            # Map legacy 'shape' and 'geometry.type' to V3 'primitive' if missing
+            for child in plan_json["root_node"]["children"]:
+                if "primitive" not in child:
+                    child["primitive"] = child.get("shape") or child.get("geometry", {}).get("type") or "box"
+                if "role" not in child:
+                    child["role"] = child.get("name", "unknown_part")
+        
         return plan_json
 
     def generate(self, prompt, export_format="stl"):
@@ -44,6 +69,9 @@ class CADPipeline:
         
         if "dsl_version" not in plan_json:
             plan_json["dsl_version"] = "0.1.0"
+            
+        # Migrate legacy plans if necessary
+        plan_json = self._clean_plan_json(plan_json)
             
         try:
             validated_plan = AssemblySchema(**plan_json)
