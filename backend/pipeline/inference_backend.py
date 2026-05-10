@@ -35,15 +35,23 @@ class InferenceBackend:
             )
         else:
             logger.info(f"Initializing OpenAI-compatible client at {self.api_base}")
-            self._client = OpenAI(api_key=self.api_key, base_url=self.api_base)
+            self._client = OpenAI(
+                api_key=self.api_key, 
+                base_url=self.api_base,
+                timeout=120.0  # Increased for slow local inference
+            )
 
     def generate(self, system_prompt: str, user_prompt: str, json_format: bool = True) -> Optional[str]:
         """Unified generation interface."""
+        logger.info(f"Generating with {self.engine_type}...")
         try:
             if self.engine_type == "llama-cpp":
-                return self._generate_llama_cpp(system_prompt, user_prompt, json_format)
+                text = self._generate_llama_cpp(system_prompt, user_prompt, json_format)
             else:
-                return self._generate_api(system_prompt, user_prompt, json_format)
+                text = self._generate_api(system_prompt, user_prompt, json_format)
+            
+            logger.info(f"Raw Response: {text[:200]}...")
+            return text
         except Exception as e:
             logger.error(f"Inference Error ({self.engine_type}): {e}")
             return None

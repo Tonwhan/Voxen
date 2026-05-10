@@ -13,6 +13,16 @@ class CADAgents:
     def __init__(self):
         self.backend = _backend
 
+    def _clean_json(self, text):
+        """Extract JSON from potential markdown blocks."""
+        if not text: return ""
+        text = text.strip()
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0]
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0]
+        return text.strip()
+
     def parse_intent(self, prompt):
         system_prompt = """You are a Semantic Intent Parser for CAD.
 Extract the core object, style, material, and key parts from the user prompt.
@@ -24,13 +34,16 @@ Output ONLY valid JSON. No markdown."""
             text = self.backend.generate(system_prompt, prompt)
             if not text:
                 return None
-            intent = json.loads(text)
+            
+            clean_text = self._clean_json(text)
+            intent = json.loads(clean_text)
+            
             if not intent or "object" not in intent:
-                logger.warning(f"Intent parser found no CAD intent for: {prompt}")
+                logger.warning(f"Intent parser found no CAD intent for: {prompt}. Raw output was: {text}")
                 return None
             return intent
         except Exception as e:
-            logger.error(f"parse_intent failed: {e}")
+            logger.error(f"parse_intent failed to parse JSON: {e}")
             return None
 
     def plan_cad(self, semantic_intent):
