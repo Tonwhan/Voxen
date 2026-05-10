@@ -225,6 +225,11 @@ function init3D() {
   const container = document.getElementById("canvas-container");
   if (!container || scene) return;
   
+  if (container.clientWidth === 0) {
+    setTimeout(init3D, 200);
+    return;
+  }
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xfdfdfd);
   
@@ -331,8 +336,7 @@ window.exportFile = function(type) {
     const result = exporter.parse(group, { binary: true });
     downloadBlob(result, 'assembly.stl', 'application/octet-stream');
   } else if (type === 'STEP') {
-    alert("STEP Export requires a CAD kernel (OpenCASCADE). Currently generating STL/OBJ for high-fidelity export. STEP support is being deployed.");
-    // In a real production app, we would send the JSON to a Python backend with python-occ or cadquery
+    alert("STEP Export requires a CAD kernel (OpenCASCADE). Currently generating STL/OBJ for high-fidelity export.");
   }
 };
 
@@ -353,7 +357,14 @@ function animate() {
 }
 
 window.renderCAD = function(data) {
-  if (!scene) init3D();
+  if (!data || data === '{}') return;
+  
+  if (!scene) {
+    init3D();
+    setTimeout(() => window.renderCAD(data), 300);
+    return;
+  }
+
   while(group.children.length > 0) {
     const obj = group.children[0];
     if (obj.geometry) obj.geometry.dispose();
@@ -386,7 +397,7 @@ window.renderCAD = function(data) {
       });
     }
 
-    if (cad.parts) {
+    if (cad.parts && cad.parts.length > 0) {
       cad.parts.forEach(p => {
         const d = p.geometry.dimensions;
         const pos = p.position;
@@ -434,7 +445,15 @@ window.renderCAD = function(data) {
     }
   } catch (e) { console.error("Render error:", e); }
 };
-setTimeout(init3D, 500);
+
+function startEngine() {
+  if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+    init3D();
+  } else {
+    setTimeout(startEngine, 200);
+  }
+}
+startEngine();
 </script>
 """
 
