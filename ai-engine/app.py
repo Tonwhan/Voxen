@@ -3,6 +3,7 @@ import torch
 import gradio as gr
 import json
 import re
+import os
 
 MODEL_PATH = "./models/qwen3-8b"
 
@@ -16,18 +17,21 @@ Expected JSON structure:
     {
       "id": "part_1",
       "name": "Part Name",
-      "shape": "box" | "cylinder",
+      "shape": "box" | "cylinder" | "gear",
       "position": [0, 0, 0],
       "rotation": [0, 0, 0],
       "scale": [1, 1, 1],
       "color": "#HEXCODE",
       "geometry": {
-        "type": "box" | "cylinder",
-        "dimensions": {"width": 100, "height": 10, "depth": 50}
+        "type": "box" | "cylinder" | "gear",
+        "dimensions": {
+          "width": 100, "height": 10, "depth": 50,
+          "teeth": 24, "module": 3, "bore": 20
+        }
       },
       "material": {
-        "name": "Material Name",
-        "description": "Description..."
+        "name": "Steel" | "Aluminum" | "Plastic",
+        "description": "Short description..."
       },
       "designIntent": "Purpose of this part"
     }
@@ -41,7 +45,7 @@ Expected JSON structure:
   ],
   "designStrategy": {
     "rationale": "Why this design works...",
-    "process": "How to manufacture...",
+    "process": "Manufacturing steps...",
     "notes": "Assembly instructions..."
   }
 }"""
@@ -62,30 +66,30 @@ THREE_JS_VIEWER = """
     display: grid;
     grid-template-columns: 1fr 300px;
     height: 650px;
-    background: #050505;
+    background: #ffffff;
     border-radius: 12px;
     overflow: hidden;
-    border: 1px solid #222;
-    font-family: 'Inter', 'JetBrains Mono', monospace;
-    color: #eee;
+    border: 2px solid #FF6B00;
+    font-family: 'Inter', sans-serif;
+    color: #333;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
   }
   #canvas-container {
     position: relative;
-    background: radial-gradient(circle at center, #111 0%, #050505 100%);
+    background: #fdfdfd;
   }
   #sidebar {
-    background: #0a0a0a;
-    border-left: 1px solid #222;
+    background: #fafafa;
+    border-left: 1px solid #eee;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     font-size: 11px;
   }
   .section-header {
-    background: #111;
-    padding: 8px 12px;
-    border-bottom: 1px solid #222;
-    color: #FF6B00;
+    background: #FF6B00;
+    padding: 10px 12px;
+    color: #ffffff;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -96,27 +100,26 @@ THREE_JS_VIEWER = """
   }
   .prop-row {
     display: flex;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #eee;
   }
   .prop-label {
     width: 40%;
-    padding: 6px 12px;
-    color: #555;
-    border-right: 1px solid #1a1a1a;
+    padding: 8px 12px;
+    color: #888;
+    border-right: 1px solid #eee;
     text-transform: uppercase;
     font-size: 9px;
+    font-weight: 600;
   }
   .prop-value {
     width: 60%;
-    padding: 6px 12px;
-    color: #ccc;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 8px 12px;
+    color: #333;
+    font-weight: 500;
   }
   .strategy-block {
     padding: 12px;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #eee;
   }
   .strategy-title {
     color: #FF6B00;
@@ -126,33 +129,61 @@ THREE_JS_VIEWER = """
     text-transform: uppercase;
   }
   .strategy-text {
-    color: #888;
-    line-height: 1.4;
-    font-family: monospace;
+    color: #666;
+    line-height: 1.5;
+    font-family: 'Inter', sans-serif;
   }
   #viewer-overlay {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: 15px;
+    left: 15px;
     pointer-events: none;
     z-index: 10;
   }
   .badge {
-    background: rgba(255,107,0,0.1);
-    color: #FF6B00;
-    padding: 2px 6px;
-    border: 1px solid rgba(255,107,0,0.2);
+    background: #FF6B00;
+    color: white;
+    padding: 3px 8px;
     border-radius: 4px;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: bold;
+  }
+  .export-panel {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .export-btn {
+    background: #333;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .export-btn:hover {
+    background: #FF6B00;
   }
 </style>
 
 <div id="viewer-container">
   <div id="canvas-container">
     <div id="viewer-overlay">
-      <div class="badge">AI CAD ENGINE v1.2 [SYNCED]</div>
-      <div id="assembly-name-label" style="margin-top: 8px; color: #fff; font-weight: bold; font-size: 14px;"></div>
+      <div class="badge">VOXEN AI ENGINE</div>
+      <div id="assembly-name-label" style="margin-top: 10px; color: #333; font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;"></div>
+    </div>
+    
+    <div class="export-panel">
+      <button class="export-btn" onclick="exportFile('OBJ')">OBJ</button>
+      <button class="export-btn" onclick="exportFile('STL')">STL</button>
+      <button class="export-btn" onclick="exportFile('STEP')" style="opacity: 0.5;">STEP</button>
     </div>
   </div>
   <div id="sidebar">
@@ -163,13 +194,13 @@ THREE_JS_VIEWER = """
        <div class="prop-row"><div class="prop-label">Parts</div><div class="prop-value" id="val-parts">-</div></div>
     </div>
     
-    <div class="section-header">Dimensions</div>
+    <div class="section-header">Technical Specs</div>
     <div id="dimensions-content"></div>
     
     <div class="section-header">AI Design Strategy</div>
     <div class="strategy-block">
       <div class="strategy-title">Design Rationale</div>
-      <div class="strategy-text" id="val-rationale">Waiting for generation...</div>
+      <div class="strategy-text" id="val-rationale">Processing...</div>
     </div>
     <div class="strategy-block">
       <div class="strategy-title">Manufacturing</div>
@@ -184,6 +215,9 @@ THREE_JS_VIEWER = """
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/OBJExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+
 <script>
 let scene, camera, renderer, controls, group;
 
@@ -192,13 +226,15 @@ function init3D() {
   if (!container || scene) return;
   
   scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xfdfdfd);
+  
   const width = container.clientWidth;
   const height = 650;
   
-  camera = new THREE.PerspectiveCamera(45, width / height, 1, 50000);
+  camera = new THREE.PerspectiveCamera(45, width / height, 1, 100000);
   camera.position.set(2000, 1500, 2000);
   
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(width, height);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
@@ -206,31 +242,108 @@ function init3D() {
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
   scene.add(ambientLight);
   
-  const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  mainLight.position.set(500, 500, 500);
-  scene.add(mainLight);
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  sunLight.position.set(1000, 1000, 1000);
+  scene.add(sunLight);
+
+  const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+  backLight.position.set(-1000, 500, -1000);
+  scene.add(backLight);
   
-  const fillLight = new THREE.DirectionalLight(0xff6b00, 0.4);
-  fillLight.position.set(-500, 200, -500);
-  scene.add(fillLight);
-  
-  const grid = new THREE.GridHelper(10000, 100, 0x333333, 0x151515);
+  const grid = new THREE.GridHelper(10000, 100, 0xeeeeee, 0xdddddd);
   scene.add(grid);
   
   group = new THREE.Group();
   scene.add(group);
   
   animate();
-  window.addEventListener('resize', () => {
-    const c = document.getElementById("canvas-container");
-    if(!c) return;
-    camera.aspect = c.clientWidth / 650;
-    camera.updateProjectionMatrix();
-    renderer.setSize(c.clientWidth, 650);
-  });
+}
+
+function createGearGeometry(params) {
+  const numTeeth = params.teeth || 24;
+  const module = params.module || 3;
+  const faceWidth = params.height || 15;
+  const boreRadius = (params.bore || 20) / 2;
+
+  const pitchRadius = (module * numTeeth) / 2;
+  const outerRadius = pitchRadius + module;
+  const rootRadius = pitchRadius - 1.25 * module;
+
+  const shape = new THREE.Shape();
+  const angleStep = (2 * Math.PI) / numTeeth;
+
+  for (let i = 0; i < numTeeth; i++) {
+    const angle = i * angleStep;
+    const nextAngle = (i + 1) * angleStep;
+    const toothHalfAngle = (Math.PI / numTeeth) * 0.4;
+    const rootAngle1 = angle - toothHalfAngle * 1.2;
+    const rootAngle2 = angle + toothHalfAngle * 1.2;
+
+    if (i === 0) shape.moveTo(rootRadius * Math.cos(rootAngle1), rootRadius * Math.sin(rootAngle1));
+    
+    shape.lineTo(rootRadius * Math.cos(rootAngle1), rootRadius * Math.sin(rootAngle1));
+    shape.lineTo(pitchRadius * Math.cos(angle - toothHalfAngle), pitchRadius * Math.sin(angle - toothHalfAngle));
+    shape.lineTo(outerRadius * Math.cos(angle), outerRadius * Math.sin(angle));
+    shape.lineTo(pitchRadius * Math.cos(angle + toothHalfAngle), pitchRadius * Math.sin(angle + toothHalfAngle));
+    shape.lineTo(rootRadius * Math.cos(rootAngle2), rootRadius * Math.sin(rootAngle2));
+
+    const gapAngle1 = rootAngle2;
+    const gapAngle2 = nextAngle - toothHalfAngle * 1.2;
+    const steps = 5;
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      const gapAngle = gapAngle1 + (gapAngle2 - gapAngle1) * t;
+      shape.lineTo(rootRadius * Math.cos(gapAngle), rootRadius * Math.sin(gapAngle));
+    }
+  }
+  shape.closePath();
+
+  const borePath = new THREE.Path();
+  borePath.absarc(0, 0, boreRadius, 0, Math.PI * 2, false);
+  shape.holes.push(borePath);
+
+  const extrudeSettings = {
+    depth: faceWidth,
+    bevelEnabled: true,
+    bevelThickness: 0.3,
+    bevelSize: 0.3,
+    bevelSegments: 2,
+  };
+
+  const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  geo.center();
+  geo.rotateX(Math.PI / 2);
+  return geo;
+}
+
+window.exportFile = function(type) {
+  if (!group || group.children.length === 0) return alert("No model to export");
+  
+  if (type === 'OBJ') {
+    const exporter = new THREE.OBJExporter();
+    const result = exporter.parse(group);
+    downloadBlob(result, 'assembly.obj', 'text/plain');
+  } else if (type === 'STL') {
+    const exporter = new THREE.STLExporter();
+    const result = exporter.parse(group, { binary: true });
+    downloadBlob(result, 'assembly.stl', 'application/octet-stream');
+  } else if (type === 'STEP') {
+    alert("STEP Export requires a CAD kernel (OpenCASCADE). Currently generating STL/OBJ for high-fidelity export. STEP support is being deployed.");
+    // In a real production app, we would send the JSON to a Python backend with python-occ or cadquery
+  }
+};
+
+function downloadBlob(content, filename, contentType) {
+  const blob = new Blob([content], { type: contentType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function animate() {
@@ -251,7 +364,7 @@ window.renderCAD = function(data) {
   try {
     const cad = typeof data === 'string' ? JSON.parse(data) : data;
     
-    document.getElementById("assembly-name-label").innerText = cad.assemblyName || "Unnamed";
+    document.getElementById("assembly-name-label").innerText = cad.assemblyName || "VOXEN PART";
     document.getElementById("val-project").innerText = cad.assemblyName || "-";
     document.getElementById("val-version").innerText = cad.version || "1.0.0";
     document.getElementById("val-parts").innerText = cad.parts ? cad.parts.length : "0";
@@ -276,10 +389,12 @@ window.renderCAD = function(data) {
     if (cad.parts) {
       cad.parts.forEach(p => {
         const d = p.geometry.dimensions;
-        const pos = p.position; // Array [x,y,z]
+        const pos = p.position;
         let geo;
         
-        if (p.geometry.type === "cylinder") {
+        if (p.shape === "gear" || p.geometry.type === "gear") {
+          geo = createGearGeometry(d);
+        } else if (p.geometry.type === "cylinder") {
           const r = (d.width || d.depth || 50) / 2;
           geo = new THREE.CylinderGeometry(r, r, d.height || 50, 32);
         } else {
@@ -287,13 +402,12 @@ window.renderCAD = function(data) {
         }
         
         const mat = new THREE.MeshStandardMaterial({
-          color: p.color || "#888",
-          metalness: 0.6,
-          roughness: 0.2
+          color: p.color || "#FF6B00",
+          metalness: 0.1,
+          roughness: 0.8
         });
         
         const mesh = new THREE.Mesh(geo, mat);
-        // Position is tuple [x,y,z]
         mesh.position.set(pos[0], pos[1] + (d.height||50)/2, pos[2]);
         
         if (p.rotation) {
@@ -303,9 +417,6 @@ window.renderCAD = function(data) {
             p.rotation[2] * Math.PI / 180
           );
         }
-        
-        if (p.scale) mesh.scale.set(p.scale[0], p.scale[1], p.scale[2]);
-        
         group.add(mesh);
       });
       
@@ -313,10 +424,11 @@ window.renderCAD = function(data) {
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       controls.target.copy(center);
+      
       const maxDim = Math.max(size.x, size.y, size.z);
       const fov = camera.fov * (Math.PI / 180);
       let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-      cameraZ *= 2.5; // Zoom out buffer
+      cameraZ *= 2.5; 
       camera.position.set(center.x + cameraZ, center.y + cameraZ * 0.8, center.z + cameraZ);
       camera.lookAt(center);
     }
@@ -373,7 +485,7 @@ def generate_cad(prompt, history=None):
             }
         if "version" not in parsed: parsed["version"] = "1.0.0"
         final_json = json.dumps(parsed, indent=2)
-        status = f"✅ {parsed.get('assemblyName', 'Assembly')} generated"
+        status = f"✅ {parsed.get('assemblyName', 'Assembly')} created"
     except Exception as e:
         try:
             temp = clean
@@ -390,7 +502,6 @@ def generate_cad(prompt, history=None):
             final_json = "{}"
 
     if history is not None:
-        # มั่นใจว่าเป็นรูปแบบ Messages สำหรับ Gradio 6.0+
         new_history = list(history)
         new_history.append({"role": "user", "content": prompt})
         new_history.append({"role": "assistant", "content": status})
@@ -402,19 +513,18 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 with gr.Blocks(title="VOXEN CAD Agent") as demo:
-    gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Qwen3-8B · AMD MI300X**")
+    gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Theme: White & Orange · AMD MI300X**")
     with gr.Row():
         with gr.Column(scale=4):
-            chatbot = gr.Chatbot(height=400, label="Chat") 
-            msg = gr.Textbox(placeholder="e.g. industrial gearbox", label="Prompt", lines=2)
-            btn = gr.Button("⚙️ Generate CAD", variant="primary")
-            json_out = gr.Code(language="json", label="Assembly JSON", lines=10)
+            chatbot = gr.Chatbot(height=400, label="Chat History") 
+            msg = gr.Textbox(placeholder="e.g. coffee table with 4 legs", label="AI Prompt", lines=2)
+            btn = gr.Button("⚙️ Generate CAD Model", variant="primary")
+            json_out = gr.Code(language="json", label="Output JSON", lines=10)
         with gr.Column(scale=9):
             gr.HTML(THREE_JS_VIEWER)
 
     state = gr.State([])
     
-    # สำหรับ Gradio 6.0+ แนะนำให้ใช้ list ของ dict ในการเก็บ state
     btn.click(generate_cad, [msg, state], [state, msg, json_out]).then(
         lambda s: s, state, chatbot
     ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
@@ -447,5 +557,12 @@ if __name__ == "__main__":
         server_name="0.0.0.0", 
         server_port=7860,
         share=True,
-        css=".gradio-container { background: #050505; color: #eee; } button.primary { background: #FF6B00 !important; border: none !important; }"
+        css="""
+        .gradio-container { background-color: #ffffff !important; color: #333333 !important; }
+        button.primary { background: #FF6B00 !important; border: none !important; color: white !important; font-weight: bold !important; }
+        .block { border: 1px solid #eeeeee !important; }
+        #component-0 { background: white !important; }
+        .chatbot .message.user { background: #fdf2e9 !important; border: 1px solid #FF6B00 !important; }
+        .chatbot .message.bot { background: #ffffff !important; border: 1px solid #eeeeee !important; }
+        """
     )
