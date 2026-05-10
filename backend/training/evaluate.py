@@ -24,7 +24,8 @@ BENCHMARK_PROMPTS = [
 
 class CADEvaluator:
     def __init__(self):
-        self.pipeline = CADPipeline(export_dir="benchmark_exports")
+        export_dir = os.getenv("EXPORT_DIR", "benchmark_exports")
+        self.pipeline = CADPipeline(export_dir=export_dir)
         self.results = []
 
     def run(self):

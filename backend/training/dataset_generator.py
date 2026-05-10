@@ -5,6 +5,9 @@ from datetime import datetime
 from openai import OpenAI
 from pydantic import ValidationError
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -26,24 +29,17 @@ DATASET_A_FILE = f"dataset_{DATASET_VERSION}_A_intent.jsonl"
 DATASET_B_FILE = f"dataset_{DATASET_VERSION}_B_symbolic.jsonl"
 NEGATIVES_FILE = f"dataset_{DATASET_VERSION}_negatives.jsonl"
 
-client = OpenAI(
-    api_key=API_KEY, 
-    base_url=API_BASE_URL,
-    timeout=60.0  # Increased timeout for local inference
-)
+from pipeline.inference_backend import InferenceBackend
+
+# Load backend once
+backend = InferenceBackend()
 
 def call_llm(messages: list, temperature: float = 0.7) -> str | None:
-    try:
-        response = client.chat.completions.create(
-            model=TEACHER_MODEL,
-            messages=messages,
-            response_format={"type": "json_object"},
-            temperature=temperature,
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        logger.error(f"LLM API Error: {e}")
-        return None
+    # InferenceBackend.generate expects system and user strings
+    system_prompt = next((m["content"] for m in messages if m["role"] == "system"), "")
+    user_prompt = next((m["content"] for m in messages if m["role"] == "user"), "")
+    
+    return backend.generate(system_prompt, user_prompt)
 
 def repair_plan(original_prompt: str, bad_json: str, error_msg: str) -> str | None:
     """Repair Agent: Attempts to fix Pydantic validation errors."""

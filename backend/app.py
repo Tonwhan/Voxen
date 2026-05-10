@@ -69,4 +69,7 @@ def health():
 if __name__ == '__main__':
     if not os.path.exists(EXPORT_DIR):
         os.makedirs(EXPORT_DIR)
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    
+    port = int(os.getenv("PORT", 5000))
+    debug = os.getenv("DEBUG", "False").lower() == "true"
+    app.run(host='0.0.0.0', port=port, debug=debug)
