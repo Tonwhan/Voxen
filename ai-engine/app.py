@@ -364,18 +364,15 @@ def generate_cad(prompt, history=None):
 
     try:
         parsed = json.loads(clean)
-        # Ensure metadata exists for Zod
         if "metadata" not in parsed:
             parsed["metadata"] = {
                 "generatedAt": "2026-05-10T00:00:00Z",
                 "promptSummary": prompt[:100]
             }
         if "version" not in parsed: parsed["version"] = "1.0.0"
-        
         final_json = json.dumps(parsed, indent=2)
         status = f"✅ {parsed.get('assemblyName', 'Assembly')} generated"
     except Exception as e:
-        # Simple repair
         try:
             temp = clean
             for _ in range(5):
@@ -391,7 +388,8 @@ def generate_cad(prompt, history=None):
             final_json = "{}"
 
     if history is not None:
-        new_history = list(history) + [{"role": "user", "content": prompt}, {"role": "assistant", "content": status}]
+        # กลับไปใช้รูปแบบ List of Tuples สำหรับ Gradio เวอร์ชันเก่า/มาตรฐาน
+        new_history = list(history) + [(prompt, status)]
         return new_history, "", final_json
     return final_json
 
@@ -399,11 +397,12 @@ def generate_cad(prompt, history=None):
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-with gr.Blocks(title="VOXEN CAD Agent", css=".gradio-container { background: #050505; color: #eee; }") as demo:
+# ย้าย css ไปไว้ใน launch ตามที่ Gradio เตือน
+with gr.Blocks(title="VOXEN CAD Agent") as demo:
     gr.Markdown("# ▲ VOXEN — AI CAD Agent\n**Qwen3-8B · AMD MI300X**")
     with gr.Row():
         with gr.Column(scale=4):
-            chatbot = gr.Chatbot(height=400, label="Chat", type="messages")
+            chatbot = gr.Chatbot(height=400, label="Chat") # ลบ type="messages"
             msg = gr.Textbox(placeholder="e.g. industrial gearbox", label="Prompt", lines=2)
             btn = gr.Button("⚙️ Generate CAD", variant="primary")
             json_out = gr.Code(language="json", label="Assembly JSON", lines=10)
@@ -412,6 +411,10 @@ with gr.Blocks(title="VOXEN CAD Agent", css=".gradio-container { background: #05
 
     state = gr.State([])
     btn.click(generate_cad, [msg, state], [state, msg, json_out]).then(
+        lambda s: s, state, chatbot
+    ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
+
+    msg.submit(generate_cad, [msg, state], [state, msg, json_out]).then(
         lambda s: s, state, chatbot
     ).then(None, [json_out], None, js="(j) => { if(j && j!='{}') window.renderCAD(j); }")
 
@@ -431,10 +434,13 @@ with gr.Blocks(title="VOXEN CAD Agent", css=".gradio-container { background: #05
         data = await request.json()
         prompt = data.get("prompt", "")
         if not prompt: return JSONResponse({"error": "Prompt required"}, status_code=400)
-        
-        # Call the same generation logic
         result_json = generate_cad(prompt)
         return JSONResponse(json.loads(result_json))
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    # ย้าย css มาที่นี่เพื่อรองรับ Gradio 6.0+
+    demo.launch(
+        server_name="0.0.0.0", 
+        server_port=7860,
+        css=".gradio-container { background: #050505; color: #eee; } button.primary { background: #FF6B00 !important; border: none !important; }"
+    )
