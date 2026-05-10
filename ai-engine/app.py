@@ -524,71 +524,78 @@ with gr.Blocks(title="VOXEN CAD Agent") as demo:
     btn.click(generate_cad, [msg, state], [state, msg, json_out, viewer_html])
     msg.submit(generate_cad, [msg, state], [state, msg, json_out, viewer_html])
 
-    # API
-    from fastapi import Request
-    from fastapi.middleware.cors import CORSMiddleware
-    app = demo.app
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    # --- API ---
     
-    @app.post("/generate")
-    async def api_gen(request: Request):
-        data = await request.json()
-        result_json = generate_cad(data.get("prompt", ""))[2] if isinstance(generate_cad(data.get("prompt", "")), tuple) else generate_cad(data.get("prompt", ""))
-        return json.loads(result_json)
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
-    @app.post("/export_step")
-    async def api_export_step(request: Request):
-        import os
-        import math
-        import tempfile
-        try:
-            import cadquery as cq
-        except ImportError:
-            print("Installing cadquery for STEP export...")
-            os.system("pip install cadquery==2.4.0")
-            import cadquery as cq
-            
-        data = await request.json()
-        parts = data.get("parts", [])
-        if not parts: return {"error": "No parts"}
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+@app.post("/generate")
+async def api_gen(request: Request):
+    data = await request.json()
+    result = generate_cad(data.get("prompt", ""))
+    result_json = result[2] if isinstance(result, tuple) else result
+    return json.loads(result_json)
+
+@app.post("/export_step")
+async def api_export_step(request: Request):
+    import os
+    import math
+    import tempfile
+    try:
+        import cadquery as cq
+    except ImportError:
+        print("Installing cadquery for STEP export...")
+        os.system("pip install cadquery==2.4.0")
+        import cadquery as cq
         
-        p = parts[0]
-        shape = p.get("shape", "box")
-        d = p.get("geometry", {}).get("dimensions", {})
+    data = await request.json()
+    parts = data.get("parts", [])
+    if not parts: return {"error": "No parts"}
+    
+    p = parts[0]
+    shape = p.get("shape", "box")
+    d = p.get("geometry", {}).get("dimensions", {})
+    
+    if shape == "gear" or p.get("geometry", {}).get("type") == "gear":
+        teeth = d.get("teeth", 24)
+        module = d.get("module", 3)
+        height = d.get("height", 15)
+        bore = d.get("bore", 20)
+        pr = (module * teeth) / 2
+        or_ = pr + module
+        rr = pr - 1.25 * module
+        step = (math.pi * 2) / teeth
+        pts = []
+        for i in range(teeth):
+            a = i * step
+            ha = (math.pi / teeth) * 0.4
+            pts.append((rr * math.cos(a - ha * 1.2), rr * math.sin(a - ha * 1.2)))
+            pts.append((pr * math.cos(a - ha), pr * math.sin(a - ha)))
+            pts.append((or_ * math.cos(a), or_ * math.sin(a)))
+            pts.append((pr * math.cos(a + ha), pr * math.sin(a + ha)))
+            pts.append((rr * math.cos(a + ha * 1.2), rr * math.sin(a + ha * 1.2)))
         
-        if shape == "gear" or p.get("geometry", {}).get("type") == "gear":
-            teeth = d.get("teeth", 24)
-            module = d.get("module", 3)
-            height = d.get("height", 15)
-            bore = d.get("bore", 20)
-            pr = (module * teeth) / 2
-            or_ = pr + module
-            rr = pr - 1.25 * module
-            step = (math.pi * 2) / teeth
-            pts = []
-            for i in range(teeth):
-                a = i * step
-                ha = (math.pi / teeth) * 0.4
-                pts.append((rr * math.cos(a - ha * 1.2), rr * math.sin(a - ha * 1.2)))
-                pts.append((pr * math.cos(a - ha), pr * math.sin(a - ha)))
-                pts.append((or_ * math.cos(a), or_ * math.sin(a)))
-                pts.append((pr * math.cos(a + ha), pr * math.sin(a + ha)))
-                pts.append((rr * math.cos(a + ha * 1.2), rr * math.sin(a + ha * 1.2)))
-            
-            gear = cq.Workplane("XY").polyline(pts).close().extrude(height)
-            model = gear.faces(">Z").workplane().circle(bore/2).cutThruAll()
-        elif shape == "cylinder" or p.get("geometry", {}).get("type") == "cylinder":
-            w = d.get("width", d.get("depth", 50))
-            model = cq.Workplane("XY").circle(w/2).extrude(d.get("height", 50))
-        else:
-            model = cq.Workplane("XY").box(d.get("width", 50), d.get("depth", 50), d.get("height", 50))
-            
-        tmp = tempfile.mktemp(suffix=".step")
-        cq.exporters.export(model, tmp)
-        with open(tmp, "r") as f:
-            step_content = f.read()
-        os.remove(tmp)
-        return {"step": step_content}
+        gear = cq.Workplane("XY").polyline(pts).close().extrude(height)
+        model = gear.faces(">Z").workplane().circle(bore/2).cutThruAll()
+    elif shape == "cylinder" or p.get("geometry", {}).get("type") == "cylinder":
+        w = d.get("width", d.get("depth", 50))
+        model = cq.Workplane("XY").circle(w/2).extrude(d.get("height", 50))
+    else:
+        model = cq.Workplane("XY").box(d.get("width", 50), d.get("depth", 50), d.get("height", 50))
+        
+    tmp = tempfile.mktemp(suffix=".step")
+    cq.exporters.export(model, tmp)
+    with open(tmp, "r") as f:
+        step_content = f.read()
+    os.remove(tmp)
+    return {"step": step_content}
+
+app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=30000, share=True, css=".gradio-container { background: white; } button.primary { background: #FF6B00 !important; border: none !important; color: white !important; }")
+    print("🚀 Starting Voxen API Server on port 30000...")
+    uvicorn.run(app, host="0.0.0.0", port=30000)
