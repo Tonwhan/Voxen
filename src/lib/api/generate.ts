@@ -33,10 +33,8 @@ export async function generateAssembly(prompt: string): Promise<GenerateResponse
   const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for slow CPU inference
 
   try {
-    // Direct connection to Flask backend to bypass Next.js dev proxy timeouts
-    const apiUrl = process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:5000/generate' 
-      : '/api/generate';
+    // Always use the Next.js API proxy to securely route to the AI Engine
+    const apiUrl = '/api/generate';
 
     const response = await fetch(apiUrl, {
       method: 'POST',

@@ -46,4 +46,11 @@ next-env.d.ts
 # temporary files
 .output.txt
 __pycache__/
-*.pyc
+*.pycai-engine/models/
+ai-engine/venv/
+ai-engine/wandb/
+*.log
+ai-engine/models/
+ai-engine/venv/
+ai-engine/wandb/
+*.log
