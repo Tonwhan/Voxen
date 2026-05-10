@@ -120,7 +120,7 @@ def generate_iframe_html(json_str):
                 <div class="badge-main">VOXEN AI ENGINE</div>
                 <div id="model-title">READY TO GEN</div>
                 <div class="controls-hint">
-                    🖱️ MID: Rotate &nbsp;|&nbsp; 🖱️ RIGHT: Pan &nbsp;|&nbsp; 🖱️ LEFT: Focus
+                    🖱️ LEFT/MID: Rotate &nbsp;|&nbsp; 🖱️ RIGHT: Pan &nbsp;|&nbsp; 🖱️ DBL-CLICK: Focus
                 </div>
                 <div class="export-bar">
                     <button class="btn-exp" onclick="runExport('OBJ')">OBJ</button>
@@ -169,7 +169,7 @@ def generate_iframe_html(json_str):
                 
                 // Set Custom Controls
                 controls.mouseButtons = {{
-                    LEFT: THREE.MOUSE.NONE,   // Reserved for click-to-focus
+                    LEFT: THREE.MOUSE.ROTATE,
                     MIDDLE: THREE.MOUSE.ROTATE,
                     RIGHT: THREE.MOUSE.PAN
                 }};
@@ -185,7 +185,7 @@ def generate_iframe_html(json_str):
                 scene.add(group);
                 
                 // Click to Focus logic
-                container.addEventListener('mousedown', (event) => {{
+                container.addEventListener('dblclick', (event) => {{
                     if (event.button !== 0) return; // Only Left Click
                     const rect = renderer.domElement.getBoundingClientRect();
                     mouse.x = ( ( event.clientX - rect.left ) / rect.width ) * 2 - 1;
