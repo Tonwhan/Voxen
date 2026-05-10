@@ -17,8 +17,7 @@ if USE_VLLM:
     logger.info("CADAgents: using vLLM backend (MI300X)")
 else:
     from llama_cpp import Llama
-    # _LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH", "/home/atiyut/models/Qwen3-8B-Q4_K_M.gguf")
-    _LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH","/workspace/models/qwen2.5-1.5b-instruct-q4_k_m.gguf")
+    _LOCAL_MODEL_PATH = os.getenv("LOCAL_MODEL_PATH", "/home/atiyut/models/Qwen3-8B-Q4_K_M.gguf")
     logger.info(f"CADAgents: using local llama-cpp-python ({_LOCAL_MODEL_PATH})")
     _llm = Llama(
         model_path=_LOCAL_MODEL_PATH, 
