@@ -120,7 +120,7 @@ def generate_iframe_html(json_str):
                 <div class="badge-main">VOXEN AI ENGINE</div>
                 <div id="model-title">READY TO GEN</div>
                 <div class="controls-hint">
-                    🖱️ LEFT/MID: Rotate &nbsp;|&nbsp; 🖱️ RIGHT: Pan &nbsp;|&nbsp; 🖱️ DBL-CLICK: Focus
+                    🖱️ LEFT/MID: Rotate &nbsp;|&nbsp; 🖱️ RIGHT: Pan &nbsp;|&nbsp; 🖱️ DBL-CLICK: Focus & Isolate Part
                 </div>
                 <div class="export-bar">
                     <button class="btn-exp" onclick="runExport('OBJ')">OBJ</button>
@@ -185,7 +185,7 @@ def generate_iframe_html(json_str):
                 group = new THREE.Group();
                 scene.add(group);
                 
-                // Click to Focus logic
+                // Click to Focus & Ghosting logic
                 container.addEventListener('dblclick', (event) => {{
                     if (event.button !== 0) return; // Only Left Click
                     const rect = renderer.domElement.getBoundingClientRect();
@@ -196,9 +196,34 @@ def generate_iframe_html(json_str):
                     const intersects = raycaster.intersectObjects(group.children);
                     if (intersects.length > 0) {{
                         const object = intersects[0].object;
+                        
+                        // Focus Camera
                         const box = new THREE.Box3().setFromObject(object);
                         const center = box.getCenter(new THREE.Vector3());
                         controls.target.copy(center);
+                        
+                        // Highlight selected, Ghost others (Wireframe)
+                        group.children.forEach(child => {{
+                            if (child === object) {{
+                                child.material.wireframe = false;
+                                child.material.transparent = false;
+                                child.material.opacity = 1;
+                                child.material.emissive.setHex(0x331100);
+                            }} else {{
+                                child.material.wireframe = true;
+                                child.material.transparent = true;
+                                child.material.opacity = 0.15;
+                                child.material.emissive.setHex(0x000000);
+                            }}
+                        }});
+                    }} else {{
+                        // Clicked on empty space -> Reset all
+                        group.children.forEach(child => {{
+                            child.material.wireframe = false;
+                            child.material.transparent = false;
+                            child.material.opacity = 1;
+                            child.material.emissive.setHex(0x000000);
+                        }});
                     }}
                 }});
 
