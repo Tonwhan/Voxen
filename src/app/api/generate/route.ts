@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     }
 
     // Connect to your GPU server directly
-    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://165.245.132.104:7860/generate';
+    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://129.212.188.102:30000/generate';
     console.log(`Sending AI generation request to: ${AI_ENGINE_URL}`);
 
     const response = await fetch(AI_ENGINE_URL, {

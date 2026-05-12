@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     }
 
     // Connect to your GPU server directly
-    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://165.245.132.104:7860/generate';
+    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://129.212.188.102:30000/generate';
     // The export endpoint is on the same host but /export_step
     const exportUrl = AI_ENGINE_URL.replace('/generate', '/export_step');
 

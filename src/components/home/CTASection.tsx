@@ -25,7 +25,7 @@ export function CTASection() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-10 pt-8">
           <Link
-            href="/workspace"
+            href="/sign-up"
             className="group relative px-6 py-2.5 bg-[#0A0A0A] border border-white/10 rounded-xl text-white text-sm font-medium transition-all hover:border-white/20 flex items-center gap-2 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
           >
             Get started

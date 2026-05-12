@@ -4,3 +4,5 @@ peft
 cadquery==2.4.0
 accelerate
 fastapi
+uvicorn
+gradio
