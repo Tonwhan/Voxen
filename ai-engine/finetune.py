@@ -2,6 +2,10 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from trl import SFTTrainer
+try:
+    from trl import SFTConfig
+except ImportError:
+    SFTConfig = None
 from datasets import load_dataset
 import os
 
@@ -51,37 +55,59 @@ def finetune():
     dataset = load_dataset("json", data_files=DATASET_PATH, split="train")
 
     # 4. Training Arguments
-    training_args = TrainingArguments(
-        output_dir=OUTPUT_DIR,
-        num_train_epochs=5,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=4,
-        learning_rate=1e-4,
-        weight_decay=0.01,
-        bf16=True,
-        logging_steps=1,
-        save_strategy="epoch",
-        report_to="none", # หรือ "wandb" ถ้าต้องการ tracking
-        logging_dir=LOGGING_DIR,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.1,
-    )
+    if SFTConfig is not None:
+        training_args = SFTConfig(
+            output_dir=OUTPUT_DIR,
+            num_train_epochs=5,
+            per_device_train_batch_size=2,
+            gradient_accumulation_steps=4,
+            learning_rate=1e-4,
+            weight_decay=0.01,
+            bf16=True,
+            logging_steps=1,
+            save_strategy="epoch",
+            report_to="none",
+            logging_dir=LOGGING_DIR,
+            lr_scheduler_type="cosine",
+            warmup_ratio=0.1,
+            max_seq_length=2048,
+        )
+    else:
+        training_args = TrainingArguments(
+            output_dir=OUTPUT_DIR,
+            num_train_epochs=5,
+            per_device_train_batch_size=2,
+            gradient_accumulation_steps=4,
+            learning_rate=1e-4,
+            weight_decay=0.01,
+            bf16=True,
+            logging_steps=1,
+            save_strategy="epoch",
+            report_to="none",
+            logging_dir=LOGGING_DIR,
+            lr_scheduler_type="cosine",
+            warmup_ratio=0.1,
+        )
 
     # 5. Trainer Initialization
-    # We use a robust initialization to handle different versions of the trl library
     import inspect
     trainer_kwargs = {
         "model": model,
         "train_dataset": dataset,
         "args": training_args,
-        "max_seq_length": 2048,
     }
     
     sig = inspect.signature(SFTTrainer.__init__)
+    
+    # Handle tokenizer/processing_class
     if "tokenizer" in sig.parameters:
         trainer_kwargs["tokenizer"] = tokenizer
     elif "processing_class" in sig.parameters:
         trainer_kwargs["processing_class"] = tokenizer
+        
+    # Handle max_seq_length (Only pass to __init__ if not using SFTConfig)
+    if SFTConfig is None and "max_seq_length" in sig.parameters:
+        trainer_kwargs["max_seq_length"] = 2048
         
     trainer = SFTTrainer(**trainer_kwargs)
 
