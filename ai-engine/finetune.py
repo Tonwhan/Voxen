@@ -1,13 +1,10 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from peft import LoraConfig, get_peft_model
 from trl import SFTTrainer
-try:
-    from trl import SFTConfig
-except ImportError:
-    SFTConfig = None
 from datasets import load_dataset
 import os
+import inspect
 
 # --- Configuration ---
 if os.path.isdir("./models/qwen3-8b"):
@@ -19,9 +16,37 @@ DATASET_PATH = "dataset.jsonl"
 OUTPUT_DIR = "./models/qwen3-8b-voxen"
 LOGGING_DIR = "./logs"
 
+
+def _build_trainer(model, tokenizer, dataset, training_args):
+    """Build SFTTrainer with automatic API compatibility detection."""
+    sig = inspect.signature(SFTTrainer.__init__)
+    params = set(sig.parameters.keys())
+
+    kwargs = {
+        "model": model,
+        "train_dataset": dataset,
+        "args": training_args,
+    }
+
+    # tokenizer was renamed to processing_class in trl >= 0.12
+    if "tokenizer" in params:
+        kwargs["tokenizer"] = tokenizer
+    elif "processing_class" in params:
+        kwargs["processing_class"] = tokenizer
+
+    # max_seq_length moved to SFTConfig in some versions
+    if "max_seq_length" in params:
+        kwargs["max_seq_length"] = 2048
+
+    return SFTTrainer(**kwargs)
+
+
 def finetune():
     print(f"🚀 Starting Fine-tuning for Voxen CAD Engine...")
-    
+    print(f"   Model: {MODEL_ID}")
+    print(f"   Dataset: {DATASET_PATH}")
+    print(f"   Output: {OUTPUT_DIR}")
+
     # 1. Load Tokenizer & Model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
     tokenizer.pad_token = tokenizer.eos_token
@@ -35,7 +60,6 @@ def finetune():
     )
 
     # 2. PEFT / LoRA Configuration
-    # เราเน้นปรับจูนส่วน Attention และ MLP เพื่อให้เข้าใจโครงสร้าง JSON และมิติทางวิศวกรรม
     lora_config = LoraConfig(
         r=32,
         lora_alpha=64,
@@ -47,69 +71,33 @@ def finetune():
         bias="none",
         task_type="CAUSAL_LM",
     )
-    
+
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
     # 3. Load Dataset
     dataset = load_dataset("json", data_files=DATASET_PATH, split="train")
+    print(f"   Loaded {len(dataset)} training samples")
 
-    # 4. Training Arguments
-    if SFTConfig is not None:
-        training_args = SFTConfig(
-            output_dir=OUTPUT_DIR,
-            num_train_epochs=5,
-            per_device_train_batch_size=2,
-            gradient_accumulation_steps=4,
-            learning_rate=1e-4,
-            weight_decay=0.01,
-            bf16=True,
-            logging_steps=1,
-            save_strategy="epoch",
-            report_to="none",
-            logging_dir=LOGGING_DIR,
-            lr_scheduler_type="cosine",
-            warmup_ratio=0.1,
-            max_seq_length=2048,
-        )
-    else:
-        training_args = TrainingArguments(
-            output_dir=OUTPUT_DIR,
-            num_train_epochs=5,
-            per_device_train_batch_size=2,
-            gradient_accumulation_steps=4,
-            learning_rate=1e-4,
-            weight_decay=0.01,
-            bf16=True,
-            logging_steps=1,
-            save_strategy="epoch",
-            report_to="none",
-            logging_dir=LOGGING_DIR,
-            lr_scheduler_type="cosine",
-            warmup_ratio=0.1,
-        )
+    # 4. Training Arguments (plain TrainingArguments always works)
+    training_args = TrainingArguments(
+        output_dir=OUTPUT_DIR,
+        num_train_epochs=5,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
+        learning_rate=1e-4,
+        weight_decay=0.01,
+        bf16=True,
+        logging_steps=1,
+        save_strategy="epoch",
+        report_to="none",
+        logging_dir=LOGGING_DIR,
+        lr_scheduler_type="cosine",
+        warmup_ratio=0.1,
+    )
 
-    # 5. Trainer Initialization
-    import inspect
-    trainer_kwargs = {
-        "model": model,
-        "train_dataset": dataset,
-        "args": training_args,
-    }
-    
-    sig = inspect.signature(SFTTrainer.__init__)
-    
-    # Handle tokenizer/processing_class
-    if "tokenizer" in sig.parameters:
-        trainer_kwargs["tokenizer"] = tokenizer
-    elif "processing_class" in sig.parameters:
-        trainer_kwargs["processing_class"] = tokenizer
-        
-    # Handle max_seq_length (Only pass to __init__ if not using SFTConfig)
-    if SFTConfig is None and "max_seq_length" in sig.parameters:
-        trainer_kwargs["max_seq_length"] = 2048
-        
-    trainer = SFTTrainer(**trainer_kwargs)
+    # 5. Build Trainer (auto-detects API version)
+    trainer = _build_trainer(model, tokenizer, dataset, training_args)
 
     # 6. Train
     print("🔥 Training in progress...")
