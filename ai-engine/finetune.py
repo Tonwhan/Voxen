@@ -68,14 +68,22 @@ def finetune():
     )
 
     # 5. Trainer Initialization
-    # SFTTrainer จะจัดการ 'messages' format ให้อัตโนมัติถ้าใช้เวอร์ชันล่าสุด
-    trainer = SFTTrainer(
-        model=model,
-        train_dataset=dataset,
-        args=training_args,
-        tokenizer=tokenizer,
-        max_seq_length=2048,
-    )
+    # We use a robust initialization to handle different versions of the trl library
+    import inspect
+    trainer_kwargs = {
+        "model": model,
+        "train_dataset": dataset,
+        "args": training_args,
+        "max_seq_length": 2048,
+    }
+    
+    sig = inspect.signature(SFTTrainer.__init__)
+    if "tokenizer" in sig.parameters:
+        trainer_kwargs["tokenizer"] = tokenizer
+    elif "processing_class" in sig.parameters:
+        trainer_kwargs["processing_class"] = tokenizer
+        
+    trainer = SFTTrainer(**trainer_kwargs)
 
     # 6. Train
     print("🔥 Training in progress...")
