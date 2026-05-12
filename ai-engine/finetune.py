@@ -6,9 +6,13 @@ from datasets import load_dataset
 import os
 
 # --- Configuration ---
-MODEL_ID = "./models/qwen3-8b" # หรือเปลี่ยนเป็น Qwen/Qwen2.5-7B-Instruct
+if os.path.isdir("./models/qwen3-8b"):
+    MODEL_ID = "./models/qwen3-8b"
+else:
+    MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
+
 DATASET_PATH = "dataset.jsonl"
-OUTPUT_DIR = "./models/voxen-cad-finetuned"
+OUTPUT_DIR = "./models/qwen3-8b-voxen"
 LOGGING_DIR = "./logs"
 
 def finetune():

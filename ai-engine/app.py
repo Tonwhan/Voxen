@@ -7,7 +7,7 @@ import html
 
 import os
 
-if os.path.exists("./models/qwen3-8b"):
+if os.path.isdir("./models/qwen3-8b"):
     BASE_MODEL_PATH = "./models/qwen3-8b"
 else:
     BASE_MODEL_PATH = "Qwen/Qwen2.5-7B-Instruct"
@@ -15,6 +15,16 @@ else:
 FINETUNED_PATH = "./models/qwen3-8b-voxen"
 
 SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON according to the schema. No thinking, no explanation.
+
+Design Guidelines:
+1. Coordinate System: Y is vertical (height). X and Z are horizontal.
+2. Centering: Geometries (box, cylinder) are centered at their 'position'.
+   - To make a part of height H sit on the floor, set its position.y = H/2.
+   - To make a table top of height T sit on legs of height H, set top.position.y = H (or H + T/2 if it overlaps).
+3. Tables: A table usually consists of a 'top' (box/cylinder) and 'legs' (cylinders/boxes).
+   - Coffee tables: Height ~400mm.
+   - Dining tables/Desks: Height ~750mm.
+4. Scale: Use millimeters (mm) for all dimensions.
 
 Expected JSON structure:
 {
@@ -25,7 +35,7 @@ Expected JSON structure:
       "id": "part_1",
       "name": "Part Name",
       "shape": "box" | "cylinder" | "gear",
-      "position": [0, 0, 0],
+      "position": [x, y, z],
       "rotation": [0, 0, 0],
       "scale": [1, 1, 1],
       "color": "#HEXCODE",
@@ -36,25 +46,13 @@ Expected JSON structure:
           "teeth": 24, "module": 3, "bore": 20
         }
       },
-      "material": {
-        "name": "Steel" | "Aluminum" | "Plastic",
-        "description": "Short description..."
-      },
-      "designIntent": "Purpose of this part"
+      "material": { "name": "Steel" | "Wood" | "Plastic", "description": "..." },
+      "designIntent": "..."
     }
   ],
-  "metadata": {
-    "generatedAt": "ISO_TIMESTAMP",
-    "promptSummary": "Short summary of the request"
-  },
-  "dimensions": [
-    {"label": "Overall Width", "value": "1200mm"}
-  ],
-  "designStrategy": {
-    "rationale": "Why this design works...",
-    "process": "Manufacturing steps...",
-    "notes": "Assembly instructions..."
-  }
+  "metadata": { "generatedAt": "ISO_TIMESTAMP", "promptSummary": "..." },
+  "dimensions": [ {"label": "Height", "value": "750mm"} ],
+  "designStrategy": { "rationale": "...", "process": "...", "notes": "..." }
 }"""
 
 print("Loading model...")
