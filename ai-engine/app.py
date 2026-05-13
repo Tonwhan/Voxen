@@ -19,14 +19,19 @@ SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON accordin
 Design Guidelines:
 1. Coordinate System: Y is vertical (height). X and Z are horizontal.
 2. Centering: Geometries are centered at their 'position'.
-   - To make a part sit on the floor (Y=0), set its position.y = height / 2.
-3. Realism: 
-   - A realistic table MUST have a 'top' and multiple 'legs' (usually 4).
-   - Legs should be positioned at the corners of the top.
+   - Floor Level: To sit on floor, Y = Height / 2.
+   - Touching Rule (Table): 
+     - Leg Position Y = Leg_Height / 2
+     - Top Position Y = Leg_Height + (Top_Height / 2) - 1 (Use 1mm overlap for stability)
+3. Material Context:
+   - Match material to prompt (e.g. "Wooden table" -> Material: "Oak Wood").
+   - Parts should have realistic hex colors (Wood: #8B4513, Steel: #71797E).
+4. Realism: 
+   - A realistic table MUST have a 'top' and 4 'legs' at the corners.
    - Example (Coffee Table, 1000x600, 400h): 
-     - Top: pos [0, 400, 0], dim [1000, 20, 600]
-     - Leg 1: pos [-450, 200, 250], dim [40, 400, 40]
-4. Scale: Use millimeters (mm). Max dimension should stay within ~2000mm unless specified.
+     - Top: pos [0, 409, 0], dim [1000, 20, 600]  (400 + 10 - 1 = 409)
+     - Legs: pos [+/-450, 200, +/-250], dim [40, 400, 40] (400 / 2 = 200)
+5. Scale: Use millimeters (mm). Max dimension < 2000mm.
 
 Expected JSON structure:
 {

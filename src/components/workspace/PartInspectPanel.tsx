@@ -278,9 +278,7 @@ export function PartInspectPanel({
               Design Rationale
             </p>
             <p className="text-xs text-text leading-relaxed font-medium">
-              This geometry features a balanced load-bearing architecture,
-              designed to minimize stress concentrations while maintaining a
-              lightweight profile.
+              {part.designIntent || "Balanced structural architecture optimized for intended use-case."}
             </p>
           </div>
           <div className="p-3 border-b border-border/30">
@@ -288,7 +286,7 @@ export function PartInspectPanel({
               Recommended Material
             </p>
             <p className="text-xs text-text font-bold">
-              Carbon Fiber Reinforced Polymer (CFRP)
+              {part.material.name || "Industrial Grade Alloy"}
             </p>
           </div>
           <div className="p-3">
@@ -296,9 +294,7 @@ export function PartInspectPanel({
               Material Rationale
             </p>
             <p className="text-xs text-text leading-relaxed opacity-80">
-              CFRP provides exceptional tensile strength and thermal stability,
-              making it ideal for precision parts that require long-term
-              durability in variable environments.
+              {part.material.description || "Material selected for optimal strength-to-weight ratio and durability."}
             </p>
           </div>
         </div>
