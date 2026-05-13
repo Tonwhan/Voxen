@@ -18,13 +18,15 @@ SYSTEM_PROMPT = """You are a CAD JSON generator. Output ONLY valid JSON accordin
 
 Design Guidelines:
 1. Coordinate System: Y is vertical (height). X and Z are horizontal.
-2. Centering: Geometries (box, cylinder) are centered at their 'position'.
-   - To make a part of height H sit on the floor, set its position.y = H/2.
-   - To make a table top of height T sit on legs of height H, set top.position.y = H (or H + T/2 if it overlaps).
-3. Tables: A table usually consists of a 'top' (box/cylinder) and 'legs' (cylinders/boxes).
-   - Coffee tables: Height ~400mm.
-   - Dining tables/Desks: Height ~750mm.
-4. Scale: Use millimeters (mm) for all dimensions.
+2. Centering: Geometries are centered at their 'position'.
+   - To make a part sit on the floor (Y=0), set its position.y = height / 2.
+3. Realism: 
+   - A realistic table MUST have a 'top' and multiple 'legs' (usually 4).
+   - Legs should be positioned at the corners of the top.
+   - Example (Coffee Table, 1000x600, 400h): 
+     - Top: pos [0, 400, 0], dim [1000, 20, 600]
+     - Leg 1: pos [-450, 200, 250], dim [40, 400, 40]
+4. Scale: Use millimeters (mm). Max dimension should stay within ~2000mm unless specified.
 
 Expected JSON structure:
 {
@@ -36,22 +38,19 @@ Expected JSON structure:
       "name": "Part Name",
       "shape": "box" | "cylinder" | "gear",
       "position": [x, y, z],
-      "rotation": [0, 0, 0],
+      "rotation": [rx, ry, rz],
       "scale": [1, 1, 1],
       "color": "#HEXCODE",
       "geometry": {
         "type": "box" | "cylinder" | "gear",
-        "dimensions": {
-          "width": 100, "height": 10, "depth": 50,
-          "teeth": 24, "module": 3, "bore": 20
-        }
+        "dimensions": { "width": 100, "height": 10, "depth": 50, "teeth": 24, "module": 3, "bore": 20 }
       },
       "material": { "name": "Steel" | "Wood" | "Plastic", "description": "..." },
       "designIntent": "..."
     }
   ],
   "metadata": { "generatedAt": "ISO_TIMESTAMP", "promptSummary": "..." },
-  "dimensions": [ {"label": "Height", "value": "750mm"} ],
+  "dimensions": [ {"label": "Width", "value": "1000mm"} ],
   "designStrategy": { "rationale": "...", "process": "...", "notes": "..." }
 }"""
 
@@ -176,7 +175,7 @@ def generate_iframe_html(json_str):
                 scene = new THREE.Scene();
                 scene.background = new THREE.Color(0xfdfdfd);
                 
-                camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 100000);
+                camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 10, 1000000);
                 camera.position.set(2000, 1500, 2000);
                 
                 renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: false }});
@@ -385,7 +384,7 @@ def generate_iframe_html(json_str):
                             }}
                             
                             const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({{ color: p.color || 0x222222, metalness: 0.8, roughness: 0.3 }}));
-                            mesh.position.set(p.position[0], p.position[1] + (d.height||50)/2, p.position[2]);
+                            mesh.position.set(p.position[0], p.position[1], p.position[2]);
                             if(p.rotation) mesh.rotation.set(p.rotation[0]*Math.PI/180, p.rotation[1]*Math.PI/180, p.rotation[2]*Math.PI/180);
                             group.add(mesh);
                         }});
